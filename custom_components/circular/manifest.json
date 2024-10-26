@@ -1,0 +1,17 @@
+{
+  "domain": "circular",
+  "name": "Ravelli Circular 8",
+  "integration_type": "device",
+  "config_flow": true,
+  "documentation": "https://github.com/docteurzoidberg/ha-circular/blob/main/README.md",
+  "requirements": [
+    "aiohttp",
+    "pydantic"
+  ],
+  "codeowners": [
+    "@GuiLeb"
+  ],
+  "iot_class": "local_polling",
+  "loggers": [],
+  "version": "1.0.0"
+}
