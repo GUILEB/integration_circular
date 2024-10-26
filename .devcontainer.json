@@ -1,5 +1,5 @@
 {
-    "name": "guileb/integration_ravellicircular",
+    "name": "guileb/integration_circular",
     "image": "mcr.microsoft.com/devcontainers/python:3.12",
     "postCreateCommand": "scripts/setup",
     "forwardPorts": [

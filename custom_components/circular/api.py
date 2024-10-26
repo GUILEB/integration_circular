@@ -390,8 +390,8 @@ class CircularApiClient:
 
     async def set_fan_speed(self, value):
         """Set air room vent fan speed"""
-        # ui min value is 0 (=50% fan) to 10 (=100fan)
-        value = clamp(int(value), 0, 10)
+        # ui min value is 0 (OFF) to 5 (HIGH) , 6 = (AUTO)
+        value = clamp(int(value), 0, 6)
         LOGGER.debug(f"Set fan speed to {value}")
         await self._winetclient.set_register(WinetRegister.FAN_AR_SPEED, value)
 
