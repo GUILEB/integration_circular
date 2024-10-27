@@ -53,7 +53,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
     entity_description: ClimateEntityDescription
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    _attr_fan_mode = "FAN_AUTO"
+    attr_fan_mode = "FAN_AUTO"
     _attr_fan_modes = [
         "FAN_OFF",
         "FAN_LOW",
@@ -165,7 +165,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
         """Toggle the entity."""
 
     @property
-    def set_fan_mode(self, fan_mode: str) -> str:
+    def fan_mode(self) -> str | None:
         """Set new target fan mode."""
         keys = [
             k
