@@ -3,7 +3,7 @@
         "step": {
             "manual_device_entry": {
                 "title": "Stove's IP Address",
-                "description": "If you need help with the configuration have a look here: https://github.com/docteurzoidberg/ha-circular",
+                "description": "If you need help with the configuration have a look here: https://github.com/GUILEB/integration_circular",
                 "data": {
                     "host": "IP Address"
                 }
