@@ -28,7 +28,6 @@ PLATFORMS = [
     Platform.NUMBER,
     Platform.SENSOR,
     Platform.SWITCH,
-    Platform.FAN,
 ]
 
 # Configuration and options
@@ -41,9 +40,6 @@ DEFAULT_THERMOSTAT_TEMP = 21
 
 MIN_THERMOSTAT_TEMP = 5
 MAX_THERMOSTAT_TEMP = 40
-
-MIN_FAN_SPEED = 0
-MAX_FAN_SPEED = 6
 
 MIN_POWER = 2
 MAX_POWER = 5
