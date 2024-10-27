@@ -73,6 +73,14 @@ class CircularClimate(CircularEntity, ClimateEntity):
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     last_temp = DEFAULT_THERMOSTAT_TEMP
 
+    fan_mode_register = {
+        "FAN_OFF": 0,
+        "FAN_LOW": 1,
+        "FAN_MEDIUM": 3,
+        "FAN_HIGH": 5,
+        "FAN_AUTO": 6,
+    }
+
     def __init__(
         self,
         coordinator: CircularDataUpdateCoordinator,
@@ -157,37 +165,20 @@ class CircularClimate(CircularEntity, ClimateEntity):
         """Toggle the entity."""
 
     @property
-    def set_fan_mode(self, fan_mode) -> str:
+    def set_fan_mode(self, fan_mode: str) -> str:
         """Set new target fan mode."""
-        int_value = self.coordinator.read_api.data.fan_speed
-        match int_value:
-            case 0:
-                return "FAN_OFF"
-            case 1:
-                return "FAN_LOW"
-            case 3:
-                return "FAN_MEDIUM"
-            case 5:
-                return "FAN_HIGH"
-            case 6:
-                return "FAN_AUTO"
+        keys = [
+            k
+            for k, v in self.fan_mode_register.items()
+            if v == self.coordinator.read_api.data.fan_speed
+        ]
+        if keys:
+            return keys[0]
+        return "FAN_AUTO"
 
-        return "FAN_OFF"
-
-    async def async_set_fan_mode(self, fan_mode):
+    async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
         LOGGER.debug("Setting Fan value %s", fan_mode)
-
-        match fan_mode:
-            case "FAN_OFF":
-                int_value = 0
-            case "FAN_LOW":
-                int_value = 1
-            case "FAN_MEDIUM":
-                int_value = 3
-            case "FAN_HIGH":
-                int_value = 5
-            case "FAN_AUTO":
-                int_value = 6
-
-        await self.coordinator.control_api.set_fan_speed(int_value)
+        await self.coordinator.control_api.set_fan_speed(
+            self.fan_mode_register[fan_mode]
+        )
