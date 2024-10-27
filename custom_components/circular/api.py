@@ -110,6 +110,7 @@ class CircularApiData:
         self._rawdata = WinetGetRegisterResult()
         self.signal = self._rawdata.signal
         self.name = self._rawdata.name
+        self.alr = self._rawdata.alr
         self.host = host
         self.model = WinetProductModel(self._rawdata.model).get_message()
         self.status = CircularDeviceStatus.UNKNOWN
@@ -144,6 +145,7 @@ class CircularApiData:
         self._rawdata.params = newparams
         self._rawdata.cat = newdata.cat
         self._rawdata.signal = newdata.signal
+        self._rawdata.alr = newdata.alr
         self._rawdata.bk = newdata.bk
         self._rawdata.authLevel = newdata.authLevel
         self._rawdata.model = newdata.model
@@ -151,6 +153,7 @@ class CircularApiData:
 
         if decode:
             self.signal = newdata.signal
+            self.alr = newdata.alr
             self.name = newdata.name
             self.model = WinetProductModel(newdata.model)
             self._decode_status()

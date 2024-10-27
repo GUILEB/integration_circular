@@ -1,4 +1,5 @@
 """Model definitions."""
+
 from pydantic import BaseModel, Field
 
 
@@ -16,3 +17,4 @@ class WinetGetRegisterResult(BaseModel):
     authLevel: int = Field(default=0)
     model: int = Field(default=0)
     name: str = Field(default="unset")
+    alr: str = Field(default="unset")

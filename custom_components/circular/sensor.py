@@ -71,14 +71,15 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     CircularSensorEntityDescription(
         key="alarms",
         name="Alarms",
-        value_fn=lambda data: "TODO",
-        entity_registry_enabled_default=False,
+        value_fn=lambda data: data.alr,
+        # entity_registry_enabled_default=False,
     ),
     CircularSensorEntityDescription(
         key="name",
         name="Name",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.name,
+        entity_registry_enabled_default=False,
     ),
     CircularSensorEntityDescription(
         key="host",
@@ -99,7 +100,7 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
         name="Product model",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.model.get_message(),
-        # entity_registry_enabled_default=False,
+        entity_registry_enabled_default=False,
     ),
 )
 
