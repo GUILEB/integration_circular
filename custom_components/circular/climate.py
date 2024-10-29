@@ -109,10 +109,13 @@ class CircularClimate(CircularEntity, ClimateEntity):
             "Setting mode to [%s] - using last temp: %s", hvac_mode, self.last_temp
         )
 
+        # Prise en compte du de l'option confort climat (Eco mode)
         if hvac_mode == HVACMode.OFF:
+            temp_c = self.coordinator.read_api.data.temperature_read
+            await self.async_set_temperature(temp_c)
             return
 
-        # hvac_mode == HVACMode.HEAT
+        if hvac_mode == HVACMode.HEAT :
         # 1) Set the desired target temp
         # await self.coordinator.control_api.set_thermostat_c(
         #    temp_c=self.last_temp,

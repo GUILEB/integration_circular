@@ -37,7 +37,8 @@ class CircularDeviceStatus(Enum):  # type: ignore
     FINAL_CLEANING = 7
     ECO_STOP = 8
     MODULA = 9
-    ALARM = 10
+    UNKNOWN_2 = 10
+    ALARM = 11
     UNKNOWN = -1
 
     def get_message(self) -> str:
@@ -70,16 +71,24 @@ class CircularDeviceStatus(Enum):  # type: ignore
 
 
 class CircularDeviceAlarm(Enum):  # type: ignore
-    """Winet alarm bits"""
+    """Winet alarm bytes"""
 
-    SMOKE_PROBE_FAILURE = 0
-    SMOKE_OVERTEMPERATURE = 1
-    EXTRACTOR_MALFUNCTION = 2
-    FAILED_IGNITION = 3
-    NO_PELLETS = 4
-    LACK_OF_PRESSURE = 5
-    THERMAL_SAFETY = 6
-    OPEN_PELLET_COMPARTMENT = 7
+    NO_ALARM = 0
+    BLAKC_OUT = 1
+    SMOKE_PROBE_FAILURE = 2
+    SMOKE_OVERTEMPERATURE = 3
+    EXTRACTOR_MALFUNCTION = 4
+    FAILED_IGNITION = 5
+    NO_PELLETS = 6
+    THERMAL_SAFETY = 7
+    LACK_OF_PRESSURE = 8
+    EXTRACTOR_TURN = 12
+    TARIERE_PHASE = 14
+    TARIERE_TRIAC = 15
+    CLEANER_FAILURE = 19
+    TARIERE_ALARM = 25
+
+    OPEN_PELLET_COMPARTMENT = 7  # ???
 
     def get_message(self) -> str:
         """Get a message associated with the enum."""
@@ -187,10 +196,8 @@ class CircularApiData:
         if alarmsbyte < 0:
             LOGGER.error("Cannot decode alarms")
             return
-        for i in range(8):
-            temp = alarmsbyte >> i
-            if temp & 1:
-                self.alarms.append(CircularDeviceAlarm(i))
+        self.alarms.clear()
+        self.alarms.append(CircularDeviceAlarm(alarmsbyte))
 
     def _decode_temperature_read(self) -> None:
         """
@@ -221,7 +228,6 @@ class CircularApiData:
         """Is stove on ?"""
         return self.status not in [
             CircularDeviceStatus.OFF,
-            CircularDeviceStatus.ALARM,
         ]
 
     @property
@@ -430,6 +436,10 @@ class CircularApiClient:
         """Poll the Winet module locally."""
         result = await self._winetclient.get_registers(
             WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_2
+        )
+        self._data.update(newdata=result, decode=False)
+        result = await self._winetclient.get_registers(
+            WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_4
         )
         self._data.update(newdata=result, decode=False)
         result = await self._winetclient.get_registers(
