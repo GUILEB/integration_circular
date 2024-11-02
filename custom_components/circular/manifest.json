@@ -4,6 +4,7 @@
   "integration_type": "device",
   "config_flow": true,
   "documentation": "https://github.com/GUILEB/integration_circular/blob/master/README.md",
+  "issue_tracker": "https://github.com/GUILEB/integration_circular/issues",
   "requirements": [
     "aiohttp",
     "pydantic"
@@ -13,5 +14,5 @@
   ],
   "iot_class": "local_polling",
   "loggers": [],
-  "version": "1.0.0"
+  "version": "0.0.0"
 }
