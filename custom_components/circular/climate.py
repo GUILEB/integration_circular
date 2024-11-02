@@ -112,18 +112,12 @@ class CircularClimate(CircularEntity, ClimateEntity):
         # Prise en compte du de l'option confort climat (Eco mode)
         if hvac_mode == HVACMode.OFF:
             temp_c = self.coordinator.read_api.data.temperature_read
-            await self.async_set_temperature(temp_c)
-            return
+            # return
 
-        if hvac_mode == HVACMode.HEAT :
-        # 1) Set the desired target temp
-        # await self.coordinator.control_api.set_thermostat_c(
-        #    temp_c=self.last_temp,
-        # )
+        if hvac_mode == HVACMode.HEAT:
+            temp_c = self.last_temp
 
-        # 2) Make sure the fireplace is on!
-        # if not self.coordinator.read_api.data.is_on:
-        #    await self.coordinator.control_api.flame_on()
+        await self.coordinator.control_api.set_temperature(temp_c)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""
@@ -149,23 +143,20 @@ class CircularClimate(CircularEntity, ClimateEntity):
     @property
     def turn_on(self):
         """Turn the entity on."""
+        LOGGER.debug("Setting turn_on : %s ", self._attr_hvac_mode)
 
     async def async_turn_on(self):
         """Turn the entity on."""
+        LOGGER.debug("Setting async_turn_on : %s ", self._attr_hvac_mode)
 
     @property
     def turn_off(self):
         """Turn the entity off."""
+        LOGGER.debug("Setting turn_off : %s ", self._attr_hvac_mode)
 
     async def async_turn_off(self):
         """Turn the entity off."""
-
-    @property
-    def toggle(self):
-        """Toggle the entity."""
-
-    async def async_toggle(self):
-        """Toggle the entity."""
+        LOGGER.debug("Setting async_turn_off : %s ", self._attr_hvac_mode)
 
     @property
     def fan_mode(self) -> str | None:
