@@ -3,6 +3,7 @@
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
+[![GitHub Issues][issues-shield]][issues]
 
 [![hacs][hacsbadge]][hacs]
 
@@ -57,11 +58,16 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 ***
 
 [integration_circular]: https://github.com/GUILEB/integration_circular
-[commits-shield]: https://img.shields.io/github/commit-activity/y/docteurzoidberg/ha-invicta.svg?style=for-the-badge
+[commits-shield]: https://img.shields.io/github/check-runs/GUILEB/integration_circular/fe39dd96b270fd23de742a0112f131b8058ec259
+ge
 [commits]: https://github.com/GUILEB/integration_circular/commits/master
 [hacs]: https://github.com/custom-components/hacs
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[logoimg]: logo_circular.png
-[license-shield]: https://img.shields.io/github/license/docteurzoidberg/ha-invicta.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/docteurzoidberg/ha-invicta.svg?style=for-the-badge
+[logoimg]: logo-Ravelli.png
+[license-shield]: https://img.shields.io/github/license/GUILEB/integration_circular
+[releases-shield]: https://img.shields.io/github/v/release/GUILEB/integration_circular
 [releases]: https://github.com/GUILEB/integration_circular/releases
+[issues-shield]: https://img.shields.io/github/issues/GUILEB/integration_circular
+[issues]: https://github.com/GUILEB/integration_circular/issues
+
+
