@@ -5,8 +5,6 @@
 [![License][license-shield]](LICENSE)
 
 [![hacs][hacsbadge]][hacs]
-![Project Maintenance][maintenance-shield]
-[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 This component enable the control of Ravelli Circular Pellet Stoves by Home Assistant.
 
@@ -59,14 +57,11 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 ***
 
 [integration_circular]: https://github.com/GUILEB/integration_circular
-<!-- [buymecoffee]: https://www.buymeacoffee.com/drzoid -->
-<!-- [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge -->
 [commits-shield]: https://img.shields.io/github/commit-activity/y/docteurzoidberg/ha-invicta.svg?style=for-the-badge
 [commits]: https://github.com/GUILEB/integration_circular/commits/master
 [hacs]: https://github.com/custom-components/hacs
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
 [logoimg]: logo_circular.png
 [license-shield]: https://img.shields.io/github/license/docteurzoidberg/ha-invicta.svg?style=for-the-badge
-[maintenance-shield]: https://img.shields.io/badge/maintainer-DrZoid-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/docteurzoidberg/ha-invicta.svg?style=for-the-badge
 [releases]: https://github.com/GUILEB/integration_circular/releases
