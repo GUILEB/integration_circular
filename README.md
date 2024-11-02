@@ -1,47 +1,67 @@
-# Notice
+# Circular Integration
 
-The component and platforms in this repository are not meant to be used by a
-user, but as a "blueprint" that custom component developers can build
-upon, to make more awesome stuff.
+[![GitHub Release][releases-shield]][releases]
+[![GitHub Activity][commits-shield]][commits]
+[![License][license-shield]](LICENSE)
 
-HAVE FUN! 😎
+[![hacs][hacsbadge]][hacs]
 
-## Why?
+This component enable the control of Ravelli Circular Pellet Stoves by Home Assistant.
 
-This is simple, by having custom_components look (README + structure) the same
-it is easier for developers to help each other and for users to start using them.
+Tested with the Ravelli Circular 8 pellet stove (not tested on others stoves but should work if the stove uses a Winet Control wifi module)
 
-If you are a developer and you want to add things to this "blueprint" that you think more
-developers will have use for, please open a PR to add it :)
+**This component will set up the following platforms.**
 
-## What?
+Platform | Description
+-- | --
+`binary_sensor` | Show something `True` or `False`.
+`sensor` | Show info from blueprint API.
+`switch` | Switch something `True` or `False`.
 
-This repository contains multiple files, here is a overview:
+![logo][logoimg]
 
-File | Purpose | Documentation
--- | -- | --
-`.devcontainer.json` | Used for development/testing with Visual Studio Code. | [Documentation](https://code.visualstudio.com/docs/remote/containers)
-`.github/ISSUE_TEMPLATE/*.yml` | Templates for the issue tracker | [Documentation](https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository)
-`.vscode/tasks.json` | Tasks for the devcontainer. | [Documentation](https://code.visualstudio.com/docs/editor/tasks)
-`custom_components/integration_blueprint/*` | Integration files, this is where everything happens. | [Documentation](https://developers.home-assistant.io/docs/creating_component_index)
-`CONTRIBUTING.md` | Guidelines on how to contribute. | [Documentation](https://help.github.com/en/github/building-a-strong-community/setting-guidelines-for-repository-contributors)
-`LICENSE` | The license file for the project. | [Documentation](https://help.github.com/en/github/creating-cloning-and-archiving-repositories/licensing-a-repository)
-`README.md` | The file you are reading now, should contain info about the integration, installation and configuration instructions. | [Documentation](https://help.github.com/en/github/writing-on-github/basic-writing-and-formatting-syntax)
-`requirements.txt` | Python packages used for development/lint/testing this integration. | [Documentation](https://pip.pypa.io/en/stable/user_guide/#requirements-files)
+## Installation
 
-## How?
+1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
+2. If you do not have a `custom_components` directory (folder) there, you need to create it.
+3. In the `custom_components` directory (folder) create a new folder called `integration_circular`.
+4. Download _all_ the files from the `custom_components/integration_circular/` directory (folder) in this repository.
+5. Place the files you downloaded in the new directory (folder) you created.
+6. Restart Home Assistant
+7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Integration circular"
 
-1. Create a new repository in GitHub, using this repository as a template by clicking the "Use this template" button in the GitHub UI.
-1. Open your new repository in Visual Studio Code devcontainer (Preferably with the "`Dev Containers: Clone Repository in Named Container Volume...`" option).
-1. Rename all instances of the `integration_blueprint` to `custom_components/<your_integration_domain>` (e.g. `custom_components/awesome_integration`).
-1. Rename all instances of the `Integration Blueprint` to `<Your Integration Name>` (e.g. `Awesome Integration`).
-1. Run the `scripts/develop` to start HA and test out your new integration.
+Using your HA configuration directory (folder) as a starting point you should now also have this:
 
-## Next steps
+```text
+custom_components/integration_circular/translations/en.json
+custom_components/integration_circular/translations/nb.json
+custom_components/integration_circulartranslations/sensor.nb.json
+custom_components/integration_circular/__init__.py
+custom_components/integration_circular/api.py
+custom_components/integration_circular/binary_sensor.py
+custom_components/integration_circular/config_flow.py
+custom_components/integration_circular/const.py
+custom_components/integration_circular/manifest.json
+custom_components/integration_circular/sensor.py
+custom_components/integration_circular/switch.py
+```
 
-These are some next steps you may want to look into:
-- Add tests to your integration, [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component) can help you get started.
-- Add brand images (logo/icon) to https://github.com/home-assistant/brands.
-- Create your first release.
-- Share your integration on the [Home Assistant Forum](https://community.home-assistant.io/).
-- Submit your integration to [HACS](https://hacs.xyz/docs/publish/start).
+## Configuration is done in the UI
+
+<!---->
+
+## Contributions are welcome!
+
+If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
+
+***
+
+[integration_circular]: https://github.com/GUILEB/integration_circular
+[commits-shield]: https://img.shields.io/github/commit-activity/y/docteurzoidberg/ha-invicta.svg?style=for-the-badge
+[commits]: https://github.com/GUILEB/integration_circular/commits/master
+[hacs]: https://github.com/custom-components/hacs
+[hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
+[logoimg]: logo_circular.png
+[license-shield]: https://img.shields.io/github/license/docteurzoidberg/ha-invicta.svg?style=for-the-badge
+[releases-shield]: https://img.shields.io/github/release/docteurzoidberg/ha-invicta.svg?style=for-the-badge
+[releases]: https://github.com/GUILEB/integration_circular/releases
