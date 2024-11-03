@@ -1,14 +1,18 @@
-# Circular Integration
-
+# Ravelli Circular Integration
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
+[![GitHub Issues][issues-shield]][issues]
 [![License][license-shield]](LICENSE)
 
-[![hacs][hacsbadge]][hacs]
+![Project Maintenance][maintenance-shield] [![hacs][hacsbadge]][hacs]
+
+[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 This component enable the control of Ravelli Circular Pellet Stoves by Home Assistant.
 
 Tested with the Ravelli Circular 8 pellet stove (not tested on others stoves but should work if the stove uses a Winet Control wifi module)
+
+_Integration to integrate with [integration_blueprint][integration_blueprint] and [integration_invicta][integration_invicta]._
 
 **This component will set up the following platforms.**
 
@@ -20,7 +24,11 @@ Platform | Description
 
 ![logo][logoimg]
 
-## Installation
+## Installation by HACS
+
+TODO
+
+## Installation (Manual)
 
 1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
 2. If you do not have a `custom_components` directory (folder) there, you need to create it.
@@ -55,13 +63,31 @@ custom_components/integration_circular/switch.py
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
 
 ***
+[logoimg]: logo.png
 
-[integration_circular]: https://github.com/GUILEB/integration_circular
-[commits-shield]: https://img.shields.io/github/commit-activity/y/docteurzoidberg/ha-invicta.svg?style=for-the-badge
+[integration_blueprint]: https://github.com/ludeeus/integration_blueprint
+[integration_invicta]: https://github.com/docteurzoidberg/ha-invicta
+
+[releases-shield]: https://img.shields.io/github/v/release/GUILEB/integration_circular
+
+[releases]: (https://github.com/GUILEB/integration_circular/releases)
+
+[issues-shield]: https://img.shields.io/github/issues/GUILEB/integration_circular
+
+[issues]: https://github.com/GUILEB/integration_circular/issues
+
+[commits-shield]: https://img.shields.io/github/check-runs/GUILEB/integration_circular/fe39dd96b270fd23de742a0112f131b8058ec259
+
 [commits]: https://github.com/GUILEB/integration_circular/commits/master
+
+[license-shield]: https://img.shields.io/github/license/GUILEB/integration_circular
+
 [hacs]: https://github.com/custom-components/hacs
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[logoimg]: logo_circular.png
-[license-shield]: https://img.shields.io/github/license/docteurzoidberg/ha-invicta.svg?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/docteurzoidberg/ha-invicta.svg?style=for-the-badge
-[releases]: https://github.com/GUILEB/integration_circular/releases
+
+[maintenance-shield]: https://img.shields.io/badge/maintainer-GUILEB-blue.svg?style=for-the-badge
+
+[buymecoffee]: https://buymeacoffee.com/guillaumelk
+[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
+
+
