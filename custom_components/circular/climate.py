@@ -9,6 +9,11 @@ from homeassistant.components.climate import (
     ClimateEntityDescription,
     ClimateEntityFeature,
     HVACMode,
+    FAN_OFF,
+    FAN_LOW,
+    FAN_MEDIUM,
+    FAN_HIGH,
+    FAN_AUTO,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
@@ -53,13 +58,13 @@ class CircularClimate(CircularEntity, ClimateEntity):
     entity_description: ClimateEntityDescription
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    attr_fan_mode = "FAN_AUTO"
+    attr_fan_mode = FAN_AUTO
     _attr_fan_modes = [
-        "FAN_OFF",
-        "FAN_LOW",
-        "FAN_MEDIUM",
-        "FAN_HIGH",
-        "FAN_AUTO",
+        FAN_OFF,
+        FAN_LOW,
+        FAN_MEDIUM,
+        FAN_HIGH,
+        FAN_AUTO,
     ]
     _attr_min_temp = MIN_THERMOSTAT_TEMP
     _attr_max_temp = MAX_THERMOSTAT_TEMP
@@ -72,13 +77,14 @@ class CircularClimate(CircularEntity, ClimateEntity):
     _attr_target_temperature_step = 0.5
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     last_temp = DEFAULT_THERMOSTAT_TEMP
+    current_hvac_mode = HVACMode.OFF
 
     fan_mode_register = {
-        "FAN_OFF": 0,
-        "FAN_LOW": 1,
-        "FAN_MEDIUM": 3,
-        "FAN_HIGH": 5,
-        "FAN_AUTO": 6,
+        FAN_OFF: 0,
+        FAN_LOW: 1,
+        FAN_MEDIUM: 3,
+        FAN_HIGH: 5,
+        FAN_AUTO: 6,
     }
 
     def __init__(
@@ -95,10 +101,13 @@ class CircularClimate(CircularEntity, ClimateEntity):
     def hvac_mode(self) -> str:
         """Return current hvac mode."""
         status = self.coordinator.read_api.data.status
-        if status not in [
-            CircularDeviceStatus.OFF,
-            CircularDeviceStatus.ALARM,
-            CircularDeviceStatus.UNKNOWN,
+        # if status not in [
+        #     CircularDeviceStatus.OFF,
+        #     CircularDeviceStatus.ALARM,
+        #     CircularDeviceStatus.UNKNOWN,
+        # ]:
+        if status in [
+            CircularDeviceStatus.WORK,
         ]:
             return HVACMode.HEAT
         return HVACMode.OFF
@@ -108,16 +117,18 @@ class CircularClimate(CircularEntity, ClimateEntity):
         LOGGER.warning(
             "Setting mode to [%s] - using last temp: %s", hvac_mode, self.last_temp
         )
+        is_heating = self.coordinator.read_api.data.is_heating
+        temp_c = self.last_temp
 
-        # Prise en compte du de l'option confort climat (Eco mode)
-        if hvac_mode == HVACMode.OFF:
+        # Le poele est en chauffe et demande d'arrêt (Mise en Eco Mode)
+        if hvac_mode == HVACMode.OFF and is_heating:
             temp_c = self.coordinator.read_api.data.temperature_read
-            # return
+            await self.coordinator.control_api.set_temperature(temp_c)
 
-        if hvac_mode == HVACMode.HEAT:
-            temp_c = self.last_temp
-
-        await self.coordinator.control_api.set_temperature(temp_c)
+        if hvac_mode == HVACMode.HEAT and not is_heating:
+            # Le poele est Arrêté et demande de Chauffer avec un Poele en ECO MODE (par defaut +3°)
+            temp_c = self.coordinator.read_api.data.temperature_read + 3
+            await self.coordinator.control_api.set_temperature(temp_c)
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""
@@ -148,6 +159,9 @@ class CircularClimate(CircularEntity, ClimateEntity):
     async def async_turn_on(self):
         """Turn the entity on."""
         LOGGER.debug("Setting async_turn_on : %s ", self._attr_hvac_mode)
+        # ECO Mode
+        temp_c = self.coordinator.read_api.data.temperature_read + 3
+        await self.coordinator.control_api.set_temperature(temp_c)
 
     @property
     def turn_off(self):
@@ -157,6 +171,9 @@ class CircularClimate(CircularEntity, ClimateEntity):
     async def async_turn_off(self):
         """Turn the entity off."""
         LOGGER.debug("Setting async_turn_off : %s ", self._attr_hvac_mode)
+        # ECO Mode
+        temp_c = self.coordinator.read_api.data.temperature_read
+        await self.coordinator.control_api.set_temperature(temp_c)
 
     @property
     def fan_mode(self) -> str | None:
@@ -168,7 +185,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
         ]
         if keys:
             return keys[0]
-        return "FAN_AUTO"
+        return FAN_AUTO
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
         """Set new target fan mode."""
