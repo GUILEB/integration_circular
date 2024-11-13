@@ -37,12 +37,15 @@ CONF_HOST = "host"
 # Defaults
 DEFAULT_NAME = DOMAIN
 DEFAULT_THERMOSTAT_TEMP = 21
+DEFAULT_DELTA_ECOMODE_TEMP = 3
+DEFAULT_DELTA_ECOMODE_TIME = 60
 
 MIN_THERMOSTAT_TEMP = 5
 MAX_THERMOSTAT_TEMP = 40
 
 MIN_POWER = 2
 MAX_POWER = 5
+
 
 STARTUP_MESSAGE = f"""
 -------------------------------------------------------------------

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from typing import Any
+import asyncio
 
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityDescription,
     ClimateEntityFeature,
     HVACMode,
+    HVACAction,
     FAN_OFF,
     FAN_LOW,
     FAN_MEDIUM,
@@ -22,9 +24,11 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularDeviceStatus
 from .const import (
-    DEFAULT_THERMOSTAT_TEMP,
     DOMAIN,
     LOGGER,
+    DEFAULT_THERMOSTAT_TEMP,
+    DEFAULT_DELTA_ECOMODE_TEMP,
+    DEFAULT_DELTA_ECOMODE_TIME,
     MAX_THERMOSTAT_TEMP,
     MIN_THERMOSTAT_TEMP,
 )
@@ -58,6 +62,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
     entity_description: ClimateEntityDescription
 
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
+
     attr_fan_mode = FAN_AUTO
     _attr_fan_modes = [
         FAN_OFF,
@@ -74,10 +79,11 @@ class CircularClimate(CircularEntity, ClimateEntity):
         | ClimateEntityFeature.TURN_ON
         | ClimateEntityFeature.TURN_OFF
     )
-    _attr_target_temperature_step = 0.5
+
+    _attr_target_temperature_step = 1
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
+
     last_temp = DEFAULT_THERMOSTAT_TEMP
-    current_hvac_mode = HVACMode.OFF
 
     fan_mode_register = {
         FAN_OFF: 0,
@@ -94,20 +100,16 @@ class CircularClimate(CircularEntity, ClimateEntity):
     ) -> None:
         """Configure climate entry - and override last_temp if the thermostat is currently on."""
         super().__init__(coordinator, description)
-
         self.last_temp = coordinator.data.temperature_set
 
     @property
     def hvac_mode(self) -> str:
         """Return current hvac mode."""
         status = self.coordinator.read_api.data.status
-        # if status not in [
-        #     CircularDeviceStatus.OFF,
-        #     CircularDeviceStatus.ALARM,
-        #     CircularDeviceStatus.UNKNOWN,
-        # ]:
-        if status in [
-            CircularDeviceStatus.WORK,
+        if status not in [
+            CircularDeviceStatus.OFF,
+            CircularDeviceStatus.ALARM,
+            CircularDeviceStatus.UNKNOWN,
         ]:
             return HVACMode.HEAT
         return HVACMode.OFF
@@ -117,18 +119,35 @@ class CircularClimate(CircularEntity, ClimateEntity):
         LOGGER.warning(
             "Setting mode to [%s] - using last temp: %s", hvac_mode, self.last_temp
         )
-        is_heating = self.coordinator.read_api.data.is_heating
-        temp_c = self.last_temp
 
-        # Le poele est en chauffe et demande d'arrêt (Mise en Eco Mode)
-        if hvac_mode == HVACMode.OFF and is_heating:
-            temp_c = self.coordinator.read_api.data.temperature_read
+        # Changement d'état Chauffage à OFF
+        if hvac_mode == HVACMode.OFF:
+            temp_c = min(
+                self.coordinator.read_api.data.temperature_read, self.last_temp
+            )
+            LOGGER.warning("Setting ECO MODE Actif: %s %f", hvac_mode, self.last_temp)
             await self.coordinator.control_api.set_temperature(temp_c)
+            self.last_temp = temp_c
+            return
 
-        if hvac_mode == HVACMode.HEAT and not is_heating:
-            # Le poele est Arrêté et demande de Chauffer avec un Poele en ECO MODE (par defaut +3°)
-            temp_c = self.coordinator.read_api.data.temperature_read + 3
-            await self.coordinator.control_api.set_temperature(temp_c)
+        # ECO MODE : Restauration de la consigne de temperature, suite à démmarrage
+        if hvac_mode == HVACMode.HEAT:
+            # Démarrage du poele (ECO Mode)
+            temp_c = (
+                self.coordinator.read_api.data.temperature_read
+                + DEFAULT_DELTA_ECOMODE_TEMP
+            )
+            LOGGER.warning("Setting ECO MODE DesActif: %s %f", hvac_mode, temp_c)
+            await self.coordinator.control_api.set_temperature(self.temp_c)
+            await asyncio.sleep(DEFAULT_DELTA_ECOMODE_TIME)
+            ##ECO_MODE : Configuration de la consigne après le démarrage
+            LOGGER.warning(
+                "Setting Consigne ECO MODE: %s %f",
+                self.hvac_action,
+                self.last_temp,
+            )
+            await self.coordinator.control_api.set_temperature(self.last_temp)
+            return
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""
@@ -158,10 +177,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
 
     async def async_turn_on(self):
         """Turn the entity on."""
-        LOGGER.debug("Setting async_turn_on : %s ", self._attr_hvac_mode)
-        # ECO Mode
-        temp_c = self.coordinator.read_api.data.temperature_read + 3
-        await self.coordinator.control_api.set_temperature(temp_c)
+        await self.async_set_hvac_mode(HVACMode.HEAT)
 
     @property
     def turn_off(self):
@@ -170,10 +186,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
 
     async def async_turn_off(self):
         """Turn the entity off."""
-        LOGGER.debug("Setting async_turn_off : %s ", self._attr_hvac_mode)
-        # ECO Mode
-        temp_c = self.coordinator.read_api.data.temperature_read
-        await self.coordinator.control_api.set_temperature(temp_c)
+        await self.async_set_hvac_mode(HVACMode.OFF)
 
     @property
     def fan_mode(self) -> str | None:
