@@ -10,7 +10,6 @@ from homeassistant.components.climate import (
     ClimateEntityDescription,
     ClimateEntityFeature,
     HVACMode,
-    HVACAction,
     FAN_OFF,
     FAN_LOW,
     FAN_MEDIUM,
@@ -125,7 +124,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
             temp_c = min(
                 self.coordinator.read_api.data.temperature_read, self.last_temp
             )
-            LOGGER.warning("Setting ECO MODE Actif: %s %f", hvac_mode, self.last_temp)
+            LOGGER.warning("Setting ECO MODE Actif: %s %f", hvac_mode, temp_c)
             await self.coordinator.control_api.set_temperature(temp_c)
             self.last_temp = temp_c
             return
@@ -133,20 +132,22 @@ class CircularClimate(CircularEntity, ClimateEntity):
         # ECO MODE : Restauration de la consigne de temperature, suite à démmarrage
         if hvac_mode == HVACMode.HEAT:
             # Démarrage du poele (ECO Mode)
-            temp_c = (
-                self.coordinator.read_api.data.temperature_read
-                + DEFAULT_DELTA_ECOMODE_TEMP
-            )
             LOGGER.warning("Setting ECO MODE DesActif: %s %f", hvac_mode, temp_c)
-            await self.coordinator.control_api.set_temperature(self.temp_c)
-            await asyncio.sleep(DEFAULT_DELTA_ECOMODE_TIME)
-            ##ECO_MODE : Configuration de la consigne après le démarrage
-            LOGGER.warning(
-                "Setting Consigne ECO MODE: %s %f",
-                self.hvac_action,
-                self.last_temp,
-            )
-            await self.coordinator.control_api.set_temperature(self.last_temp)
+            if DEFAULT_DELTA_ECOMODE_TEMP == 0:
+                temp_c = (
+                    self.coordinator.read_api.data.temperature_read
+                    + DEFAULT_DELTA_ECOMODE_TEMP
+                )
+                LOGGER.warning("Setting ECO MODE DesActif: %s %f", hvac_mode, temp_c)
+                await self.coordinator.control_api.set_temperature(self.temp_c)
+                await asyncio.sleep(DEFAULT_DELTA_ECOMODE_TIME)
+                ##ECO_MODE : Configuration de la consigne après le démarrage
+                LOGGER.warning(
+                    "Setting Consigne ECO MODE: %s %f",
+                    self.hvac_action,
+                    self.last_temp,
+                )
+                await self.coordinator.control_api.set_temperature(self.last_temp)
             return
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
