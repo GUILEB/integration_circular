@@ -132,7 +132,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
         # ECO MODE : Restauration de la consigne de temperature, suite à démmarrage
         if hvac_mode == HVACMode.HEAT:
             # Démarrage du poele (ECO Mode)
-            LOGGER.warning("Setting ECO MODE DesActif: %s %f", hvac_mode, temp_c)
             if DEFAULT_DELTA_ECOMODE_TEMP == 0:
                 temp_c = (
                     self.coordinator.read_api.data.temperature_read
