@@ -1,34 +1,37 @@
 """API Client."""
 
 import asyncio
+import time
 from asyncio import Task
 from enum import Enum
-import time
+
 import aiohttp
 from aiohttp import ClientOSError
 
+from custom_components.circular.winet.exceptions import ApiRegisterError
+from custom_components.circular.winet.const import (
+    WinetProductModel,
+    WinetRegister,
+    WinetRegisterCategory,
+    WinetRegisterKey,
+)
 from custom_components.circular.winet.model import WinetGetRegisterResult
 from custom_components.circular.winet.winet import WinetAPILocal
-from custom_components.circular.winet.const import (
-    WinetRegister,
-    WinetRegisterKey,
-    WinetRegisterCategory,
-    WinetProductModel,
-)
+
 from .const import (
     DOMAIN,
     LOGGER,
-    MAX_THERMOSTAT_TEMP,
-    MIN_THERMOSTAT_TEMP,
-    MAX_POWER,
-    MIN_POWER,
     MAX_FAN_SPEED,
+    MAX_POWER,
+    MAX_THERMOSTAT_TEMP,
     MIN_FAN_SPEED,
+    MIN_POWER,
+    MIN_THERMOSTAT_TEMP,
 )
 
 
-def clamp(value, valuemin, valuemax):
-    """clamp value between min and max."""
+def clamp(value, valuemin, valuemax) -> float | int:
+    """Clamp value between min and max."""
     return valuemin if value < valuemin else valuemax if value > valuemax else value
 
 
@@ -186,7 +189,8 @@ class CircularApiData:
                 return param[1]
         LOGGER.error(f"RegisterId {registerid.value} not found in data")
         LOGGER.debug(self._rawdata)
-        raise Exception("RegisterId not found in data")
+        msg = "RegisterId not found in data"
+        raise ApiRegisterError(msg)
 
     def _decode_status(self) -> None:
         """Decode status register."""

@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Any
 import asyncio
+from typing import Any, TYPE_CHECKING
 
 from homeassistant.components.climate import (
     ClimateEntity,
     ClimateEntityDescription,
-    ClimateEntityFeature,
-    HVACMode,
-    FAN_OFF,
+)
+from homeassistant.components.climate.const import (
+    FAN_AUTO,
+    FAN_HIGH,
     FAN_LOW,
     FAN_MEDIUM,
-    FAN_HIGH,
-    FAN_AUTO,
+    FAN_OFF,
+    ClimateEntityFeature,
+    HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
@@ -23,16 +25,18 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularDeviceStatus
 from .const import (
-    DOMAIN,
-    LOGGER,
-    DEFAULT_THERMOSTAT_TEMP,
     DEFAULT_DELTA_ECOMODE_TEMP,
     DEFAULT_DELTA_ECOMODE_TIME,
+    DEFAULT_THERMOSTAT_TEMP,
+    DOMAIN,
+    LOGGER,
     MAX_THERMOSTAT_TEMP,
     MIN_THERMOSTAT_TEMP,
 )
-from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
+
+if TYPE_CHECKING:
+    from .coordinator import CircularDataUpdateCoordinator
 
 CIRCULAR_CLIMATES: tuple[ClimateEntityDescription, ...] = (
     ClimateEntityDescription(key="climate", name="Thermostat"),
@@ -59,9 +63,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
     """Circular climate entity."""
 
     entity_description: ClimateEntityDescription
-
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-
     attr_fan_mode = FAN_AUTO
     _attr_fan_modes = [
         FAN_OFF,
@@ -97,7 +99,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
         coordinator: CircularDataUpdateCoordinator,
         description: ClimateEntityDescription,
     ) -> None:
-        """Configure climate entry - and override last_temp if the thermostat is currently on."""
+        """Configure climate entry and override last_temp if the thermostat is currently on."""
         super().__init__(coordinator, description)
         self.last_temp = coordinator.data.temperature_set
 
@@ -116,7 +118,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set HVAC mode to normal or thermostat control."""
         LOGGER.warning(
-            "Setting mode to [%s] - using last temp: %s", hvac_mode, self.last_temp
+            "Setting hvac mode to [%s] - last temp: %s", hvac_mode, self.last_temp
         )
 
         # Changement d'état Chauffage à OFF
