@@ -49,6 +49,12 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
         value_fn=lambda data: data.is_heating,
     ),
     CircularBinarySensorEntityDescription(
+        key="ecostop",
+        name="Eco stop",
+        icon="mdi:leaf",
+        value_fn=lambda data: data.is_ecomode_stop,
+    ),
+    CircularBinarySensorEntityDescription(
         key="error_offline",
         name="Offline Error",
         entity_category=EntityCategory.DIAGNOSTIC,

@@ -128,5 +128,6 @@ class EcoDeltaControlEntity(CircularEntity, NumberEntity):
             value_to_send,
         )
         self._attr_native_value = value_to_send
-        self.async_write_ha_state()
+        await self.coordinator.control_api.set_delta_temp(value=value_to_send)
         await self.coordinator.async_refresh()
+        self.async_write_ha_state()

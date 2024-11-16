@@ -112,6 +112,9 @@ class CircularClimate(CircularEntity, ClimateEntity):
             CircularDeviceStatus.ALARM,
             CircularDeviceStatus.UNKNOWN,
         ]:
+            result = self.coordinator.control_api.set_temperature_without_delta(
+                self.last_temp
+            )
             return HVACMode.HEAT
         return HVACMode.OFF
 
@@ -126,30 +129,18 @@ class CircularClimate(CircularEntity, ClimateEntity):
             temp_c = min(
                 self.coordinator.read_api.data.temperature_read, self.last_temp
             )
-            LOGGER.warning("Setting ECO MODE Actif: %s %f", hvac_mode, temp_c)
             await self.coordinator.control_api.set_temperature(temp_c)
-            self.last_temp = temp_c
             return
 
-        # ECO MODE : Restauration de la consigne de temperature, suite à démmarrage
-        if hvac_mode == HVACMode.HEAT:
-            # Démarrage du poele (ECO Mode)
-            if DEFAULT_DELTA_ECOMODE_TEMP == 0:
-                temp_c = (
-                    self.coordinator.read_api.data.temperature_read
-                    + DEFAULT_DELTA_ECOMODE_TEMP
-                )
-                LOGGER.warning("Setting ECO MODE DesActif: %s %f", hvac_mode, temp_c)
-                await self.coordinator.control_api.set_temperature(self.temp_c)
-                await asyncio.sleep(DEFAULT_DELTA_ECOMODE_TIME)
-                ##ECO_MODE : Configuration de la consigne après le démarrage
-                LOGGER.warning(
-                    "Setting Consigne ECO MODE: %s %f",
-                    self.hvac_action,
-                    self.last_temp,
-                )
-                await self.coordinator.control_api.set_temperature(self.last_temp)
-            return
+        # ECO MODE : Restauration de la consigne de temperature, suite arrêt en ECO Mode
+        if (
+            hvac_mode == HVACMode.HEAT
+            and self.coordinator.read_api.data.is_ecomode_stop
+        ):
+            await self.coordinator.control_api.set_temperature_with_delta(
+                self.coordinator.read_api.data.temperature_read
+            )
+        return
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""

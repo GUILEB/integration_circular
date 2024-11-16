@@ -27,6 +27,8 @@ from .const import (
     MIN_FAN_SPEED,
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
+    MIN_DELTA_ECOMODE_TEMP,
+    MAX_DELTA_ECOMODE_TEMP,
 )
 
 
@@ -139,6 +141,8 @@ class CircularApiData:
         self.temperature_set = 0.0
         self.power_set = 0
         self.fan_speed = 0
+        self._delta_ecomode = 0.0
+        self._delta_ecomode_ask = False
 
     def update(self, newdata: WinetGetRegisterResult, decode: bool = True):
         """Update or add data to rawdata."""
@@ -236,6 +240,11 @@ class CircularApiData:
     def is_heating(self) -> bool:
         """Is heating ?."""
         return self.status in [CircularDeviceStatus.WORK]
+
+    @property
+    def is_ecomode_stop(self) -> bool:
+        """Is heating ?."""
+        return self.status in [CircularDeviceStatus.ECO_STOP]
 
     @property
     def error_offline(self) -> bool:
@@ -402,14 +411,21 @@ class CircularApiClient:
         # ui min value is 0 (OFF) to 5 (HIGH) , 6 = (AUTO)
         value = clamp(int(value), MIN_FAN_SPEED, MAX_FAN_SPEED)
         LOGGER.debug(f"Set fan speed to {value}")
-        await self._winetclient.set_register(WinetRegister.FAN_AR_SPEED, value)
+        await self._winetclient.set_register(WinetRegister.FAN_AR_SPEED, int(value))
 
     async def set_power(self, value: float) -> None:
         """Send set register with key=002&memory=1&regId=51&value={value} ."""
         # ui's min value is 1 and maximum is 5
         value = clamp(int(value), MIN_POWER, MAX_POWER)
         LOGGER.debug(f"Set power to {value}")
-        await self._winetclient.set_register(WinetRegister.POWER_SET, value)
+        await self._winetclient.set_register(WinetRegister.POWER_SET, int(value))
+
+    async def set_delta_temp(self, value: float) -> None:
+        """Set Add temp for wake up stove with eco climat mode ."""
+        # ui's min value is 1 and maximum is 5
+        value = clamp(int(value), MIN_DELTA_ECOMODE_TEMP, MAX_DELTA_ECOMODE_TEMP)
+        LOGGER.debug(f"Set Delta Eco Mode to {value}")
+        self._delta_ecomode = value
 
     async def set_temperature(self, value: float) -> None:
         """Send set register with key=002&memory=1&regId=50&value={value} ."""
@@ -419,6 +435,25 @@ class CircularApiClient:
         )
         LOGGER.warning(f"Set temperature to {value}")
         await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
+
+    async def set_temperature_with_delta(self, value: float) -> None:
+        """Send set register with key=002&memory=1&regId=50&value={value} ."""
+        # self defined min/max values
+        value = value + self._delta_ecomode
+        self.delta_ecomode_ask = True
+        value = clamp(
+            float(value), float(MIN_THERMOSTAT_TEMP), float(MAX_THERMOSTAT_TEMP)
+        )
+        LOGGER.warning(f"Set temperature with delta to {value}")
+        await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
+
+    async def set_temperature_without_delta(self, value: float) -> None:
+        """Send set register with key=002&memory=1&regId=50&value={value} ."""
+        # Stop ecomode with real target temperature
+        if self.data.is_heating and self.delta_ecomode_ask:
+            value = value - self._delta_ecomode
+            self.delta_ecomode_ask = False
+            await self.set_temperature(value)
 
     async def turn_on(self) -> None:
         """Turn on the stove."""
