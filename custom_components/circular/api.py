@@ -316,6 +316,7 @@ class CircularApiClient:
         self.is_polling_in_background = False
         self.is_sending = False
         self.failed_poll_attempts = 0
+        self.delta_ecomode_ask = False
 
     @property
     def data(self) -> CircularApiData:
@@ -439,7 +440,7 @@ class CircularApiClient:
     async def set_temperature_with_delta(self, value: float) -> None:
         """Send set register with key=002&memory=1&regId=50&value={value} ."""
         # self defined min/max values
-        value = value + self._delta_ecomode
+        value = min(value + self._delta_ecomode, value)
         self.delta_ecomode_ask = True
         value = clamp(
             float(value), float(MIN_THERMOSTAT_TEMP), float(MAX_THERMOSTAT_TEMP)
@@ -451,7 +452,7 @@ class CircularApiClient:
         """Send set register with key=002&memory=1&regId=50&value={value} ."""
         # Stop ecomode with real target temperature
         if self.data.is_heating and self.delta_ecomode_ask:
-            value = value - self._delta_ecomode
+            value = max(value - self._delta_ecomode, value)
             self.delta_ecomode_ask = False
             await self.set_temperature(value)
 
@@ -489,3 +490,5 @@ class CircularApiClient:
         )
         if result is not None:
             self._data.update(newdata=result, decode=True)
+        # Take account  EcoMode
+        await self.set_temperature_without_delta(self._data.temperature_set)
