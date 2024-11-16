@@ -123,6 +123,6 @@ class CircularSensor(CircularEntity, SensorEntity):
     entity_description: CircularSensorEntityDescription
 
     @property
-    def native_value(self) -> int | str | datetime | None:
+    def native_value(self) -> float | int | str | datetime | None:
         """Return the state."""
         return self.entity_description.value_fn(self.coordinator.read_api.data)
