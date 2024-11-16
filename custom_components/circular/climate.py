@@ -112,9 +112,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
             CircularDeviceStatus.ALARM,
             CircularDeviceStatus.UNKNOWN,
         ]:
-            result = self.coordinator.control_api.set_temperature_without_delta(
-                self.last_temp
-            )
             return HVACMode.HEAT
         return HVACMode.OFF
 
