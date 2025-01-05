@@ -170,7 +170,7 @@ class CircularApiData:
         self._rawdata.signal = newdata.signal
         self._rawdata.alr = newdata.alr
         self._rawdata.bk = newdata.bk
-        self._rawdata.authLevel = newdata.authLevel
+        self._rawdata.authlevel = newdata.authlevel
         self._rawdata.model = newdata.model
         self._rawdata.name = newdata.name
 
