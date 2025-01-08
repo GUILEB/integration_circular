@@ -144,7 +144,11 @@ class CircularApiData:
         self._delta_ecomode = 0.0
         self._delta_ecomode_ask = False
 
-    def update(self, newdata: WinetGetRegisterResult, decode: bool = True):
+    def update(
+        self,
+        newdata: WinetGetRegisterResult,
+        category: WinetRegisterCategory = WinetRegisterCategory.NONE,
+    ) -> None:
         """Update or add data to rawdata."""
         # convert actual data to dict
         newparamsdict = {}
@@ -169,22 +173,25 @@ class CircularApiData:
         self._rawdata.cat = newdata.cat
         self._rawdata.signal = newdata.signal
         self._rawdata.alr = newdata.alr
-        self._rawdata.bk = newdata.bk
         self._rawdata.authlevel = newdata.authlevel
         self._rawdata.model = newdata.model
         self._rawdata.name = newdata.name
 
-        if decode:
+        if category == WinetRegisterCategory.POLL_CATEGORY_2:
+            self._decode_temperature_read()
+            self._decode_temperature_set()
+            self._decode_power_set()
+            self._decode_status()
+
+        if category == WinetRegisterCategory.POLL_CATEGORY_6:
+            self._decode_alarms()
+            self._decode_fan_speed()
+
+        if category != WinetRegisterCategory.NONE:
             self.signal = newdata.signal
             self.alr = newdata.alr
             self.name = newdata.name
             self.model = WinetProductModel(newdata.model)
-            self._decode_status()
-            self._decode_alarms()
-            self._decode_temperature_read()
-            self._decode_temperature_set()
-            self._decode_power_set()
-            self._decode_fan_speed()
 
     def _get_register_value(self, registerid: WinetRegister) -> int:
         """Parse all data (memory banks?) to find a register's value."""
@@ -473,22 +480,33 @@ class CircularApiClient:
     async def poll(self) -> None:
         """Poll the Winet module locally."""
         # Update Alarm Temp,Power
+
+        result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)
+        if result is not None:
+            self._data.update(newdata=result, category=WinetRegisterCategory.NONE)
+
         result = await self._winetclient.get_registers(
             WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_2
         )
         if result is not None:
-            self._data.update(newdata=result, decode=False)
+            self._data.update(
+                newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_2
+            )
         # Update Configuration : Fan
         result = await self._winetclient.get_registers(
             WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_4
         )
         if result is not None:
-            self._data.update(newdata=result, decode=False)
+            self._data.update(
+                newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_4
+            )
         # Update Alarm
         result = await self._winetclient.get_registers(
             WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_6
         )
         if result is not None:
-            self._data.update(newdata=result, decode=True)
+            self._data.update(
+                newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_6
+            )
         # Take account  EcoMode
         await self.set_temperature_without_delta(self._data.temperature_set)
