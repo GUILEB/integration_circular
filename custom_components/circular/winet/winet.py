@@ -46,13 +46,15 @@ class WinetAPILocal:
             headers = {
                 "Access-Control-Request-Method": "POST",
                 "Host": f"{self._stove_ip}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
                 "Accept": "application/json, text/javascript, */*; q=0.01",
                 "Accept-Encoding": "gzip, deflate",
                 "Content-Type": "application/json; charset=utf-8",
                 "X-Requested-With": "XMLHttpRequest",
                 "Origin": f"http://{self._stove_ip}",
                 "Referer": f"http://{self._stove_ip}/management.html",
+                "Accept-Language": "fr,fr-FR;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+                "Connection": "keep - alive",
             }
             LOGGER.debug(f"Querying {url} with data={data}")
             try:
