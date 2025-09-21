@@ -1,8 +1,10 @@
-"""Winet-Control API"""
+#!/usr/bin/env python3
+"""Winet-Control API."""
 
 from __future__ import annotations
-import logging
 
+import logging
+from http import HTTPStatus
 from json import JSONDecodeError
 
 import aiohttp
@@ -12,18 +14,19 @@ from aiohttp import (
     ServerDisconnectedError,
 )
 
-from .model import WinetGetRegisterResult
 from .const import (
     WinetRegister,
-    WinetRegisterKey,
     WinetRegisterCategory,
+    WinetRegisterKey,
 )
+from .exceptions import WinetAPIConnectionError, WinetAPIJsonDecodeError
+from .model import WinetGetRegisterResult
 
 LOGGER = logging.getLogger(__package__)
 
 
 class WinetAPILocal:
-    """Bottom level API. handle http communication with the local winet module"""
+    """Bottom level API. handle http communication with the local winet module."""
 
     def __init__(self, session: aiohttp.ClientSession, stove_ip: str) -> None:
         """Initialize Winet local api."""
@@ -34,8 +37,8 @@ class WinetAPILocal:
         self,
         key: WinetRegisterKey,
         category: WinetRegisterCategory = WinetRegisterCategory.NONE,
-    ):
-        """Poll registers"""
+    ) -> WinetGetRegisterResult | None:
+        """Poll registers."""
         async with aiohttp.ClientSession() as session:
             url = f"http://{self._stove_ip}/ajax/get-registers"
             data = {"key": key.value}
@@ -46,7 +49,11 @@ class WinetAPILocal:
             headers = {
                 "Access-Control-Request-Method": "POST",
                 "Host": f"{self._stove_ip}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0"
+                ),
                 "Accept": "application/json, text/javascript, */*; q=0.01",
                 "Accept-Encoding": "gzip, deflate",
                 "Content-Type": "application/json; charset=utf-8",
@@ -56,53 +63,45 @@ class WinetAPILocal:
                 "Accept-Language": "fr,fr-FR;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
                 "Connection": "keep - alive",
             }
-            LOGGER.debug(f"Querying {url} with data={data}")
+            LOGGER.debug("Querying %s with data=%s", url, data)
             try:
                 async with session.post(url, data=data, headers=headers) as response:
                     try:
-                        if response.status != 200:
-                            LOGGER.warning(f"Error accessing {url} - {response.status}")
-                            raise ConnectionError(
-                                f"Communication error - Response status {response.status}"
-                            )
+                        if response.status != HTTPStatus.OK:
+                            msg = f"Response status {response.status}"
+                            raise WinetAPIConnectionError(msg)
                         try:
                             json_data = await response.json(content_type=None)
                             LOGGER.debug("Received: %s", json_data)
 
-                            if "result" in json_data:
-                                # handle an action's result
-                                if json_data["result"] is False:
-                                    LOGGER.warning("Api result is False")
-                            else:
-                                try:
-                                    return WinetGetRegisterResult(**json_data)
-                                except Exception:
-                                    LOGGER.warning("Error parsing poll data")
-                                    LOGGER.debug(f"Received: {json_data}")
-                            # TODO: what about model check exceptions ?
+                            # Update Data
+                            if "result" not in json_data:
+                                return WinetGetRegisterResult(**json_data)
+                            # handle an action's result
+                            if "result" in json_data and json_data["result"] is False:
+                                LOGGER.warning("Api result is False")
                         except JSONDecodeError:
-                            LOGGER.warning("Error decoding JSON: [%s]", response.text)
+                            msg = f"Error decoding JSON: [{response.text}]"
+                            raise WinetAPIJsonDecodeError(msg) from None
 
                     except ConnectionError as exc:
-                        LOGGER.warning(f"Connection Error accessing {url}")
-                        raise ConnectionError(
-                            "ConnectionError - host not found"
-                        ) from exc
+                        msg = "ConnectionError - host not found"
+                        raise WinetAPIConnectionError(msg, exc) from None
+
             except (
                 ServerDisconnectedError,
                 ClientConnectorError,
                 ClientOSError,
                 ConnectionError,
                 UnboundLocalError,
-            ):
-                raise ConnectionError()
-            except Exception as unknown_error:
-                LOGGER.error("Unhandled Exception %s", type(unknown_error))
+            ) as exc:
+                msg = f"Connection failed {url}"
+                raise WinetAPIConnectionError(msg, exc) from None
 
     async def set_register(
-        self, registerid: WinetRegister, value: int, key="002", memory=1
-    ):
-        """send raw register values !!!"""
+        self, registerid: WinetRegister, value: int, key: str = "002", memory: int = 1
+    ) -> None:
+        """Send raw register values !!!."""
         # data exemple: key=002&memory=1&regId=51&value=3
         async with aiohttp.ClientSession() as session:
             url = f"http://{self._stove_ip}/ajax/set-register"
@@ -115,7 +114,11 @@ class WinetAPILocal:
             headers = {
                 "Access-Control-Request-Method": "POST",
                 "Host": f"{self._stove_ip}",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0",
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0"
+                ),
                 "Accept": "application/json, text/javascript, */*; q=0.01",
                 "Accept-Encoding": "gzip, deflate",
                 "Content-Type": "application/json; charset=utf-8",
@@ -123,31 +126,24 @@ class WinetAPILocal:
                 "Origin": f"http://{self._stove_ip}",
                 "Referer": f"http://{self._stove_ip}/management.html",
             }
-            LOGGER.debug(f"Posting to {url}, data={data}")
+            LOGGER.debug("Posting to %s, data=%s", url, data)
             try:
                 async with session.post(url, data=data, headers=headers) as response:
                     try:
-                        # TODO: log others error responses codes
-                        if response.status != 200:
-                            # Valid address - but poll endpoint not found
-                            LOGGER.warning(f"Error accessing {url} - {response.status}")
-                            raise ConnectionError(
-                                f"Error accessing {url} - {response.status}"
-                            )
+                        if response.status != HTTPStatus.OK:
+                            msg = f"Error accessing {url} - {response.status}"
+                            raise WinetAPIConnectionError(msg)
                         try:
-                            # returns {'result': False} if failed (or True if success)
                             json_data = await response.json(content_type=None)
                             if json_data["result"] is not True:
                                 LOGGER.debug("Received: %s", json_data)
 
                         except JSONDecodeError:
-                            LOGGER.warning("Error decoding JSON: [%s]", response.text)
+                            msg = f"Error decoding JSON: [{response.text}]"
+                            raise WinetAPIJsonDecodeError(msg) from None
                     except ConnectionError as exc:
-                        LOGGER.warning(f"Connection Error accessing {url}")
-                        raise ConnectionError(
-                            "ConnectionError - host not found"
-                        ) from exc
-
+                        msg = f"Host not found Connection Error accessing {url}"
+                        raise WinetAPIConnectionError(msg, exc) from None
             except (
                 ServerDisconnectedError,
                 ClientConnectorError,
@@ -155,6 +151,5 @@ class WinetAPILocal:
                 ConnectionError,
                 UnboundLocalError,
             ) as exc:
-                raise ConnectionError() from exc
-            except Exception as unknown_error:
-                LOGGER.error("Unhandled Exception %s", type(unknown_error))
+                msg = f"Connection failed {url}"
+                raise WinetAPIConnectionError(msg, exc) from None

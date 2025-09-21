@@ -3,8 +3,8 @@
 from enum import Enum
 
 
-class WinetProductModel(Enum):  # type: ignore
-    """Product models based on the web-ui"""
+class WinetProductModel(Enum):
+    """Product models based on the web-ui."""
 
     UNSET = 0
     L023_1 = 1
@@ -16,25 +16,20 @@ class WinetProductModel(Enum):  # type: ignore
 
     def get_message(self) -> str:
         """Get a message associated with the enum."""
-        if self.name == "UNSET":
-            return "Unset"
-        if self.name == "L023_1":
-            return "L023 - 1"
-        if self.name == "N100_O047":
-            return "N100 / O047"
-        if self.name == "O086":
-            return "O086"
-        if self.name == "L023_2":
-            return "L023 - 2"
-        if self.name == "U047":
-            return "U047"
-        if self.name == "80023CR01":
-            return "80023CR01"
-        return "UNKNOWN"
+        messages = {
+            "UNSET": "Unset",
+            "L023_1": "L023 - 1",
+            "N100_O047": "N100 / O047",
+            "O086": "O086",
+            "L023_2": "L023 - 2",
+            "U047": "U047",
+            "80023CR01": "80023CR01",
+        }
+        return messages.get(self.name, "UNKNOWN")
 
 
 class WinetRegister(Enum):
-    """Winet raw registers ids from web ui"""
+    """Winet raw registers ids from web ui."""
 
     """ POLL_CATEGORY_2 """
     STATUS = 2
@@ -63,7 +58,7 @@ class WinetRegister(Enum):
 
 
 class WinetRegisterKey(Enum):
-    """'key' parameter for get-registers url"""
+    """'key' parameter for get-registers url."""
 
     SUBSCRIBE = "019"
     POLL_DATA = "020"
@@ -71,7 +66,7 @@ class WinetRegisterKey(Enum):
 
 
 class WinetRegisterCategory(Enum):
-    """'category' parameter for get-registers url"""
+    """'category' parameter for get-registers url."""
 
     NONE = -1
     POLL_CATEGORY_2 = 2

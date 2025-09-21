@@ -1,43 +1,38 @@
 """API Client."""
 
-import asyncio
-import time
-from asyncio import Task
 from enum import Enum
 
 import aiohttp
-from aiohttp import ClientOSError
 
-from custom_components.circular.winet.exceptions import ApiRegisterError
 from custom_components.circular.winet.const import (
     WinetProductModel,
     WinetRegister,
     WinetRegisterCategory,
     WinetRegisterKey,
 )
+from custom_components.circular.winet.exceptions import WinetAPIError
 from custom_components.circular.winet.model import WinetGetRegisterResult
 from custom_components.circular.winet.winet import WinetAPILocal
 
 from .const import (
-    DOMAIN,
     LOGGER,
+    MAX_DELTA_ECOMODE_TEMP,
     MAX_FAN_SPEED,
     MAX_POWER,
     MAX_THERMOSTAT_TEMP,
+    MIN_DELTA_ECOMODE_TEMP,
     MIN_FAN_SPEED,
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
-    MIN_DELTA_ECOMODE_TEMP,
-    MAX_DELTA_ECOMODE_TEMP,
 )
 
 
-def clamp(value, valuemin, valuemax) -> float | int:
+def clamp(value: float, valuemin: float, valuemax: float) -> float | int:
     """Clamp value between min and max."""
-    return valuemin if value < valuemin else valuemax if value > valuemax else value
+    return max(valuemin, min(value, valuemax))
 
 
-class CircularDeviceStatus(Enum):  # type: ignore
+class CircularDeviceStatus(Enum):
     """Status Class based on the web-ui."""
 
     OFF = 0
@@ -201,7 +196,7 @@ class CircularApiData:
         LOGGER.error(f"RegisterId {registerid.value} not found in data")
         LOGGER.debug(self._rawdata)
         msg = "RegisterId not found in data"
-        raise ApiRegisterError(msg)
+        raise WinetAPIError(msg)
 
     def _decode_status(self) -> None:
         """Decode status register."""
@@ -305,24 +300,13 @@ class CircularApiData:
 class CircularApiClient:
     """Circular api client. use winet control api polling as backend."""
 
-    failed_poll_attempts = 0
-    is_sending = False
-    is_polling_in_background = False
-    stove_ip = ""
-
     def __init__(self, session: aiohttp.ClientSession, host: str) -> None:
         """Init."""
         self._host = host
         self._session = session
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
-        self._should_poll_in_background = False
-        self._bg_task: Task | None = None
-
         self.stove_ip = host
-        self.is_polling_in_background = False
-        self.is_sending = False
-        self.failed_poll_attempts = 0
         self.delta_ecomode_ask = False
 
     @property
@@ -331,88 +315,6 @@ class CircularApiClient:
         if self._data.name == "unset":
             LOGGER.warning("Returning uninitialized poll data")
         return self._data
-
-    def log_status(self) -> None:
-        """Log a status message."""
-        LOGGER.info(
-            "CircularApiClient Status\n\tis_sending\t[%s]\n\tfailed_polls\t[%d]\n\tBG_Running\t[%s]\n\tBG_ShouldRun\t[%s]",  # noqa: E501
-            self.is_sending,
-            self.failed_poll_attempts,
-            self.is_polling_in_background,
-            self._should_poll_in_background,
-        )
-
-    async def start_background_polling(self, minimum_wait_in_seconds: int = 5) -> None:
-        """Start an ensure-future background polling loop."""
-        if self.is_sending:
-            LOGGER.info(
-                "!! Suppressing start_background_polling -- sending mode engaged"
-            )
-            return
-
-        if not self._should_poll_in_background:
-            self._should_poll_in_background = True
-            LOGGER.info("!!  start_background_polling !!")
-
-            self._bg_task = asyncio.create_task(
-                self.__background_poll(minimum_wait_in_seconds),
-                name="background_polling",
-            )
-
-    def stop_background_polling(self) -> bool:
-        """Stop background polling - return whether it had been polling."""
-        self._should_poll_in_background = False
-        was_running = False
-        if self._bg_task and not self._bg_task.cancelled():
-            was_running = True
-            self._bg_task.cancel()
-            LOGGER.info("Stopping background task to issue a command")
-
-        return was_running
-
-    async def __background_poll(self, minimum_wait_in_seconds: int = 5) -> None:
-        """Perform a polling loop."""
-        LOGGER.debug("__background_poll:: Function Called")
-
-        self.failed_poll_attempts = 0
-
-        self.is_polling_in_background = True
-        while self._should_poll_in_background:
-            start = time.time()
-            LOGGER.debug("__background_poll:: Loop start time %f", start)
-
-            try:
-                await self.poll()
-                self.failed_poll_attempts = 0
-                end = time.time()
-
-                duration: float = end - start
-                sleep_time: float = minimum_wait_in_seconds - duration
-
-                LOGGER.debug(
-                    "__background_poll:: [%f] Sleeping for [%fs]", duration, sleep_time
-                )
-
-                LOGGER.debug(
-                    "__background_poll:: duration: %f, %f, %.2fs",
-                    start,
-                    end,
-                    (end - start),
-                )
-                LOGGER.debug(
-                    "__background_poll:: Should Sleep For: %f",
-                    (minimum_wait_in_seconds - (end - start)),
-                )
-
-                await asyncio.sleep(minimum_wait_in_seconds - (end - start))
-            except (ConnectionError, ClientOSError):
-                self.failed_poll_attempts += 1
-                LOGGER.info(
-                    "__background_poll:: Polling error [x%d]", self.failed_poll_attempts
-                )
-
-        self.is_polling_in_background = False
-        LOGGER.info("__background_poll:: Background polling disabled.")
 
     async def set_fan_speed(self, value: float) -> None:
         """Set air room vent fan speed."""

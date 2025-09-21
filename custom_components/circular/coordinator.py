@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
-from aiohttp import ClientConnectionError
-from async_timeout import timeout
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from custom_components.circular.winet.exceptions import HAASAPIPollingError
 
+from .api import CircularApiClient, CircularApiData
 from .const import DOMAIN, LOGGER
-from .api import CircularApiData, CircularApiClient
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 
 class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
@@ -28,26 +30,16 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
             hass,
             LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=2),
+            update_method=self._async_update_data,
+            update_interval=timedelta(seconds=1),
         )
         self._api = api
 
     async def _async_update_data(self) -> CircularApiData:
-        if not self._api.is_polling_in_background:
-            LOGGER.info("Starting Circular Background Polling Loop")
-            await self._api.start_background_polling()
-
-            # Don't return uninitialized poll data
-            async with timeout(15):
-                try:
-                    await self._api.poll()
-                except (ConnectionError, ClientConnectionError) as exception:
-                    raise UpdateFailed from exception
-
-        LOGGER.debug("Failure Count %d", self._api.failed_poll_attempts)
-        if self._api.failed_poll_attempts > 10:
-            LOGGER.debug("Too many polling errors - raising exception")
-            raise UpdateFailed
+        try:
+            await self._api.poll()
+        except HAASAPIPollingError as err:
+            raise err from err
 
         return self._api.data
 

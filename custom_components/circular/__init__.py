@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Custom integration to integrate Circular (Winet Control based) Pellet Stoves."""
 
 import asyncio
@@ -29,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.setdefault(DOMAIN, {})
         LOGGER.info(STARTUP_MESSAGE)
 
-    host = entry.data.get(CONF_HOST)
+    host: str = str(entry.data.get(CONF_HOST))
     session = async_get_clientsession(hass)
     api = CircularApiClient(session, host)
 

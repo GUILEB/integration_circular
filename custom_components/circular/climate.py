@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -18,15 +17,10 @@ from homeassistant.components.climate.const import (
     ClimateEntityFeature,
     HVACMode,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularDeviceStatus
 from .const import (
-    DEFAULT_DELTA_ECOMODE_TEMP,
-    DEFAULT_DELTA_ECOMODE_TIME,
     DEFAULT_THERMOSTAT_TEMP,
     DOMAIN,
     LOGGER,
@@ -36,6 +30,10 @@ from .const import (
 from .entity import CircularEntity
 
 if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
     from .coordinator import CircularDataUpdateCoordinator
 
 CIRCULAR_CLIMATES: tuple[ClimateEntityDescription, ...] = (
@@ -161,20 +159,20 @@ class CircularClimate(CircularEntity, ClimateEntity):
         return float(self.coordinator.read_api.data.temperature_set)
 
     @property
-    def turn_on(self):
+    def turn_on(self) -> None:
         """Turn the entity on."""
         LOGGER.debug("Setting turn_on : %s ", self._attr_hvac_mode)
 
-    async def async_turn_on(self):
+    async def async_turn_on(self) -> None:
         """Turn the entity on."""
         await self.async_set_hvac_mode(HVACMode.HEAT)
 
     @property
-    def turn_off(self):
+    def turn_off(self) -> None:
         """Turn the entity off."""
         LOGGER.debug("Setting turn_off : %s ", self._attr_hvac_mode)
 
-    async def async_turn_off(self):
+    async def async_turn_off(self) -> None:
         """Turn the entity off."""
         await self.async_set_hvac_mode(HVACMode.OFF)
 
