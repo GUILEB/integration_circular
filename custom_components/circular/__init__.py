@@ -10,6 +10,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import CircularApiClient
 from .const import (
+    CONF_ENTITY,
     CONF_HOST,
     DOMAIN,
     LOGGER,
@@ -33,8 +34,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     host: str = str(entry.data.get(CONF_HOST))
     session = async_get_clientsession(hass)
     api = CircularApiClient(session, host)
+    entity_id = entry.data.get(CONF_ENTITY)
 
-    coordinator = CircularDataUpdateCoordinator(hass, api=api)
+    coordinator = CircularDataUpdateCoordinator(hass, api=api, entity_id=entity_id)
     await coordinator.async_refresh()
 
     if not coordinator.last_update_success:

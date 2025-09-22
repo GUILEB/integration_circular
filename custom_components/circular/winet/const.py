@@ -23,7 +23,7 @@ class WinetProductModel(Enum):
             "O086": "O086",
             "L023_2": "L023 - 2",
             "U047": "U047",
-            "80023CR01": "80023CR01",
+            "PNEM00005": "PNEM00005",
         }
         return messages.get(self.name, "UNKNOWN")
 

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from turtle import st
 from typing import TYPE_CHECKING
 
+import async_timeout
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -24,6 +26,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
         self,
         hass: HomeAssistant,
         api: CircularApiClient,
+        entity_id: str,
     ) -> None:
         """Initialize the Coordinator."""
         super().__init__(
@@ -34,14 +37,25 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
             update_interval=timedelta(seconds=1),
         )
         self._api = api
+        self.entity_id = entity_id
 
     async def _async_update_data(self) -> CircularApiData:
         try:
-            await self._api.poll()
+            async with async_timeout.timeout(10):
+                await self._api.poll()
+
+            if self.entity_id:
+                # Obtenir la valeur actuelle de l'entité
+                state = self.hass.states.get(self.entity_id)
+                if state:
+                    entity_value = state.state
+                    await self._api.set_temperature_ask_by_external_entity(
+                        float(entity_value)
+                    )
+
+            return self._api.data
         except HAASAPIPollingError as err:
             raise err from err
-
-        return self._api.data
 
     @property
     def read_api(self) -> CircularApiClient:

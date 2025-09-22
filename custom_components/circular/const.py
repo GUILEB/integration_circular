@@ -33,6 +33,9 @@ PLATFORMS = [
 # Configuration and options
 CONF_ENABLED = "enabled"
 CONF_HOST = "host"
+CONF_NAME = "name"
+CONF_ENTITY = "entity"
+CONF_UPDATE_INTERVAL = "update_interval"
 
 # Defaults
 DEFAULT_NAME = DOMAIN

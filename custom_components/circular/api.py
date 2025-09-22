@@ -138,6 +138,7 @@ class CircularApiData:
         self.fan_speed = 0
         self._delta_ecomode = 0.0
         self._delta_ecomode_ask = False
+        self.temperature_ask_by_external_entity = 0.0
 
     def update(
         self,
@@ -378,6 +379,10 @@ class CircularApiClient:
             return
         LOGGER.debug("Turn stove off")
         await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
+
+    async def set_temperature_ask_by_external_entity(self, value: float) -> None:
+        """Set temperature ask by external entity."""
+        self.data.temperature_ask_by_external_entity = value
 
     async def poll(self) -> None:
         """Poll the Winet module locally."""
