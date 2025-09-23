@@ -42,7 +42,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
     async def _async_update_data(self) -> CircularApiData:
         try:
             async with async_timeout.timeout(UPDATE_INTERVAL):
-                await self._api.poll()
+                await self._api.update_data()
 
             if self.entity_id:
                 # Obtenir la valeur actuelle de l'entité
@@ -51,7 +51,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
                     entity_value = state.state
                     try:
                         # Vérifier si la valeur est numérique
-                        if entity_value not in ('unknown', 'unavailable'):
+                        if entity_value not in ("unknown", "unavailable"):
                             float_value = float(entity_value)
                             await self._api.set_temperature_ask_by_external_entity(
                                 float_value
@@ -60,7 +60,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
                         LOGGER.warning(
                             "Invalid temperature value from entity %s: %s",
                             self.entity_id,
-                            entity_value
+                            entity_value,
                         )
 
             return self._api.data

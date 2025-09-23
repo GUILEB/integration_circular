@@ -10,3 +10,10 @@ logger:
   default: info
   logs:
     custom_components.integration_blueprint: debug
+
+template:
+  - sensor:
+      - name: "raavellicontrol_temperature"
+        unit_of_measurement: "°C"
+        state: "{{ state_attr('climate.ravellicontrol', 'temperature') | round(1) }}"
+        availability: "{{ states('climate.ravellicontrol') not in ['unavailable', 'unknown'] }}"

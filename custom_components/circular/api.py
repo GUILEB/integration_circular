@@ -78,7 +78,7 @@ class CircularDeviceStatus(Enum):
         return f"Unknown status{self.name}"
 
 
-class CircularDeviceAlarm(Enum):  # type: ignore
+class CircularDeviceAlarm(Enum):
     """Winet alarm bytes."""
 
     NO_ALARM = 0
@@ -301,7 +301,7 @@ class CircularApiData:
 class CircularApiClient:
     """Circular api client. use winet control api polling as backend."""
 
-    def __init__(self, session: aiohttp.ClientSession|None, host: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession | None, host: str) -> None:
         """Init."""
         self._host = host
         self._session = session
@@ -314,7 +314,7 @@ class CircularApiClient:
     def data(self) -> CircularApiData:
         """Returns decoded data from api raw data."""
         if self._data.name == "unset":
-            LOGGER.warning("Returning uninitialized poll data")
+            LOGGER.warning("Returning uninitialized data")
         return self._data
 
     async def set_fan_speed(self, value: float) -> None:
@@ -382,10 +382,12 @@ class CircularApiClient:
 
     async def set_temperature_ask_by_external_entity(self, value: float) -> None:
         """Set temperature ask by external entity."""
-        self.data.temperature_ask_by_external_entity = value
+        if not self.delta_ecomode_ask and value != self.data.temperature_set:
+            await self.set_temperature(value)
+            self.data.temperature_ask_by_external_entity = value
 
-    async def poll(self) -> None:
-        """Poll the Winet module locally."""
+    async def update_data(self) -> None:
+        """Update data  the Winet module locally."""
         # Update Alarm Temp,Power
 
         result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)

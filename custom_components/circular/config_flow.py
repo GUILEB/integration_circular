@@ -30,7 +30,7 @@ async def validate_host_input(host: str) -> str:
     """Validate the user input allows us to connect."""
     LOGGER.debug("Instantiating Circular Winet-Control API with host: [%s]", host)
     api = CircularApiClient(session=None, host=host)
-    await api.poll()
+    await api.update_data()
     productmodel = api.data.model.get_message()
     LOGGER.debug("Found a stove: %s", productmodel)
     # Return the serial number which will be used to calculate a unique ID for the device/sensors
