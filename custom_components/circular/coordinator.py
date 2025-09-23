@@ -13,7 +13,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from custom_components.circular.winet.exceptions import HAASAPIPollingError
 
 from .api import CircularApiClient, CircularApiData
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -26,7 +26,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
         self,
         hass: HomeAssistant,
         api: CircularApiClient,
-        entity_id: str,
+        entity_id: str | None = None,
     ) -> None:
         """Initialize the Coordinator."""
         super().__init__(
@@ -34,14 +34,14 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
             LOGGER,
             name=DOMAIN,
             update_method=self._async_update_data,
-            update_interval=timedelta(seconds=1),
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
         self._api = api
         self.entity_id = entity_id
 
     async def _async_update_data(self) -> CircularApiData:
         try:
-            async with async_timeout.timeout(10):
+            async with async_timeout.timeout(UPDATE_INTERVAL):
                 await self._api.poll()
 
             if self.entity_id:
@@ -49,9 +49,19 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
                 state = self.hass.states.get(self.entity_id)
                 if state:
                     entity_value = state.state
-                    await self._api.set_temperature_ask_by_external_entity(
-                        float(entity_value)
-                    )
+                    try:
+                        # Vérifier si la valeur est numérique
+                        if entity_value not in ('unknown', 'unavailable'):
+                            float_value = float(entity_value)
+                            await self._api.set_temperature_ask_by_external_entity(
+                                float_value
+                            )
+                    except ValueError:
+                        LOGGER.warning(
+                            "Invalid temperature value from entity %s: %s",
+                            self.entity_id,
+                            entity_value
+                        )
 
             return self._api.data
         except HAASAPIPollingError as err:

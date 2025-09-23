@@ -4,7 +4,7 @@
 import asyncio
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Config, HomeAssistant
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -20,7 +20,7 @@ from .const import (
 from .coordinator import CircularDataUpdateCoordinator
 
 
-async def async_setup(hass: HomeAssistant, config: Config) -> bool:
+async def async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up this integration using YAML is not supported."""
     return True
 

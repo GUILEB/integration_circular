@@ -13,9 +13,8 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
+from homeassistant.const import UnitOfTemperature,EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -24,14 +23,14 @@ from .entity import CircularEntity
 from .api import CircularApiData
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularSensorRequiredKeysMixin:
     """Mixin for required keys."""
 
     value_fn: Callable[[CircularApiData], float | int | str | datetime | None]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularSensorEntityDescription(
     SensorEntityDescription,
     CircularSensorRequiredKeysMixin,
@@ -72,7 +71,6 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
         key="alarms",
         name="Alarms",
         value_fn=lambda data: data.alr,
-        # entity_registry_enabled_default=False,
     ),
     CircularSensorEntityDescription(
         key="name",
@@ -93,7 +91,6 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
         name="Wifi Signal Strength",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.signal,
-        # entity_registry_enabled_default=False,
     ),
     CircularSensorEntityDescription(
         key="product_model",

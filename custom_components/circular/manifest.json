@@ -1,6 +1,6 @@
 {
   "domain": "circular",
-  "name": "Ravelli Circular 8",
+  "name": "Ravelli",
   "integration_type": "device",
   "config_flow": true,
   "documentation": "https://github.com/GUILEB/integration_circular/blob/master/README.md",

@@ -17,7 +17,7 @@ from .entity import CircularEntity
 from .api import CircularApiClient, CircularApiData
 
 
-@dataclass()
+@dataclass(frozen=True)
 class CircularSwitchRequiredKeysMixin:
     """Mixin for required keys."""
 
@@ -26,7 +26,7 @@ class CircularSwitchRequiredKeysMixin:
     value_fn: Callable[[CircularApiData], bool]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularSwitchEntityDescription(
     SwitchEntityDescription, CircularSwitchRequiredKeysMixin
 ):

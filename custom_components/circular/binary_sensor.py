@@ -11,8 +11,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import CircularDataUpdateCoordinator
@@ -21,14 +21,14 @@ from .entity import CircularEntity
 from .api import CircularApiData
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularBinarySensorRequiredKeysMixin:
     """Mixin for required keys."""
 
     value_fn: Callable[[CircularApiData], bool]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularBinarySensorEntityDescription(
     BinarySensorEntityDescription, CircularBinarySensorRequiredKeysMixin
 ):

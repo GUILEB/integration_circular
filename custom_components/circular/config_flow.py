@@ -7,7 +7,8 @@ from typing import Any
 import voluptuous as vol
 from aiohttp import ClientConnectionError
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
+
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.helpers import selector
 
 from .api import CircularApiClient
@@ -40,6 +41,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Circular."""
 
     VERSION = 1
+    MINOR_VERSION = 1
 
     def __init__(self):
         """Initialize the Config Flow Handler."""
@@ -48,7 +50,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     # ENTRYPOINT
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         """Start the user flow (config step entrypoint)"""
 

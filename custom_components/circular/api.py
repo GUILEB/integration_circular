@@ -129,7 +129,7 @@ class CircularApiData:
         self.name = self._rawdata.name
         self.alr = self._rawdata.alr
         self.host = host
-        self.model = WinetProductModel(self._rawdata.model).get_message()
+        self.model = WinetProductModel(self._rawdata.model)
         self.status = CircularDeviceStatus.UNKNOWN
         self.alarms = []
         self.temperature_read = 0.0
@@ -301,7 +301,7 @@ class CircularApiData:
 class CircularApiClient:
     """Circular api client. use winet control api polling as backend."""
 
-    def __init__(self, session: aiohttp.ClientSession, host: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession|None, host: str) -> None:
         """Init."""
         self._host = host
         self._session = session
