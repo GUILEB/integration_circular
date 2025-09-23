@@ -344,7 +344,7 @@ class CircularApiClient:
         value = clamp(
             float(value), float(MIN_THERMOSTAT_TEMP), float(MAX_THERMOSTAT_TEMP)
         )
-        LOGGER.warning(f"Set temperature to {value}")
+        LOGGER.warning(f"Set winet temperature to {value}")
         await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
 
     async def set_temperature_with_delta(self, value: float) -> None:
@@ -383,6 +383,10 @@ class CircularApiClient:
     async def set_temperature_ask_by_external_entity(self, value: float) -> None:
         """Set temperature ask by external entity."""
         if not self.delta_ecomode_ask and value != self.data.temperature_set:
+            LOGGER.warning(
+                f"Regulated Temperature : winet Temp. {self.data.temperature_set} °C"
+                f" vs External Temp. {value} °C"
+            )
             await self.set_temperature(value)
             self.data.temperature_ask_by_external_entity = value
 
