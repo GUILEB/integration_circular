@@ -1,7 +1,5 @@
 """Support for Circular Binary Sensors."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -15,10 +13,10 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .coordinator import CircularDataUpdateCoordinator
-from .const import DOMAIN
-from .entity import CircularEntity
 from .api import CircularApiData
+from .const import DOMAIN
+from .coordinator import CircularDataUpdateCoordinator
+from .entity import CircularEntity
 
 
 @dataclass(frozen=True)

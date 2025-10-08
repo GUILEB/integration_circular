@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """Winet-Control API."""
 
-from __future__ import annotations
-
 import logging
 from http import HTTPStatus
 from json import JSONDecodeError
@@ -28,7 +26,7 @@ LOGGER = logging.getLogger(__package__)
 class WinetAPILocal:
     """Bottom level API. handle http communication with the local winet module."""
 
-    def __init__(self, session: aiohttp.ClientSession|None, stove_ip: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession | None, stove_ip: str) -> None:
         """Initialize Winet local api."""
         self._session = session
         self._stove_ip = stove_ip

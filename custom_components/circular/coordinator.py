@@ -1,10 +1,6 @@
 """The Circular integration."""
 
-from __future__ import annotations
-
 from datetime import timedelta
-from turtle import st
-from typing import TYPE_CHECKING
 
 import async_timeout
 from homeassistant.helpers.device_registry import DeviceInfo
@@ -15,8 +11,7 @@ from custom_components.circular.winet.exceptions import HAASAPIPollingError
 from .api import CircularApiClient, CircularApiData
 from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
 
-if TYPE_CHECKING:
-    from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant
 
 
 class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):

@@ -1,8 +1,6 @@
 """Circular Climate Entities."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -17,7 +15,10 @@ from homeassistant.components.climate.const import (
     ClimateEntityFeature,
     HVACMode,
 )
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularDeviceStatus
 from .const import (
@@ -27,14 +28,8 @@ from .const import (
     MAX_THERMOSTAT_TEMP,
     MIN_THERMOSTAT_TEMP,
 )
+from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
-
-if TYPE_CHECKING:
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-    from .coordinator import CircularDataUpdateCoordinator
 
 CIRCULAR_CLIMATES: tuple[ClimateEntityDescription, ...] = (
     ClimateEntityDescription(key="climate", name="Thermostat"),

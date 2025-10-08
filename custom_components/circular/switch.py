@@ -1,24 +1,18 @@
 """Define switch func."""
 
-from __future__ import annotations
-
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .api import CircularApiClient, CircularApiData
 from .const import DOMAIN
+from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
-
-if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
-
-    from homeassistant.config_entries import ConfigEntry
-    from homeassistant.core import HomeAssistant
-    from homeassistant.helpers.entity_platform import AddEntitiesCallback
-
-    from .api import CircularApiClient, CircularApiData
-    from .coordinator import CircularDataUpdateCoordinator
 
 
 @dataclass(frozen=True)
