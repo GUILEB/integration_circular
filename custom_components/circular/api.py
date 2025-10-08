@@ -139,6 +139,7 @@ class CircularApiData:
         self._delta_ecomode = 0.0
         self._delta_ecomode_ask = False
         self.temperature_ask_by_external_entity = 0.0
+        self.auto_regulated_temperature = False
 
     def update(
         self,
@@ -380,9 +381,23 @@ class CircularApiClient:
         LOGGER.debug("Turn stove off")
         await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
 
+    async def auto_regulated_temperature_on(self) -> None:
+        """Turn on automatic temperature regulation for the stove."""
+        LOGGER.debug("Regulated Temperature - on")
+        self.data.auto_regulated_temperature = True
+
+    async def auto_regulated_temperature_off(self) -> None:
+        """Turn off automatic temperature regulation for the stove."""
+        LOGGER.debug("Regulated Temperature - off")
+        self.data.auto_regulated_temperature = False
+
     async def set_temperature_ask_by_external_entity(self, value: float) -> None:
         """Set temperature ask by external entity."""
-        if not self.delta_ecomode_ask and value != self.data.temperature_set:
+        if (
+            self.data.auto_regulated_temperature
+            and not self.delta_ecomode_ask
+            and value != self.data.temperature_set
+        ):
             LOGGER.warning(
                 f"Regulated Temperature : winet Temp. {self.data.temperature_set} °C"
                 f" vs External Temp. {value} °C"

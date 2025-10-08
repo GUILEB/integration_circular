@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,15 +11,21 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature,EntityCategory
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import EntityCategory, UnitOfTemperature
 
 from .const import DOMAIN
-from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
-from .api import CircularApiData
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .api import CircularApiData
+    from .coordinator import CircularDataUpdateCoordinator
 
 
 @dataclass(frozen=True)
@@ -106,7 +111,6 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Define setup entry call."""
-
     coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         CircularSensor(coordinator=coordinator, description=description)
