@@ -1,14 +1,16 @@
+#!/usr/bin/env python3
 """Custom integration to integrate Circular (Winet Control based) Pellet Stoves."""
 
 import asyncio
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import Config, HomeAssistant
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import CircularApiClient
 from .const import (
+    CONF_ENTITY,
     CONF_HOST,
     DOMAIN,
     LOGGER,
@@ -18,7 +20,7 @@ from .const import (
 from .coordinator import CircularDataUpdateCoordinator
 
 
-async def async_setup(hass: HomeAssistant, config: Config) -> bool:
+async def async_setup(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up this integration using YAML is not supported."""
     return True
 
@@ -29,11 +31,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.setdefault(DOMAIN, {})
         LOGGER.info(STARTUP_MESSAGE)
 
-    host = entry.data.get(CONF_HOST)
+    host: str = str(entry.data.get(CONF_HOST))
     session = async_get_clientsession(hass)
     api = CircularApiClient(session, host)
+    entity_id = entry.data.get(CONF_ENTITY)
 
-    coordinator = CircularDataUpdateCoordinator(hass, api=api)
+    coordinator = CircularDataUpdateCoordinator(hass, api=api, entity_id=entity_id)
     await coordinator.async_refresh()
 
     if not coordinator.last_update_success:

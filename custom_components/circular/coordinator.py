@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from turtle import st
+from typing import TYPE_CHECKING
 
-from aiohttp import ClientConnectionError
-from async_timeout import timeout
+import async_timeout
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from custom_components.circular.winet.exceptions import HAASAPIPollingError
 
-from .const import DOMAIN, LOGGER
-from .api import CircularApiData, CircularApiClient
+from .api import CircularApiClient, CircularApiData
+from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
+
+if TYPE_CHECKING:
+    from homeassistant.core import HomeAssistant
 
 
 class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
@@ -22,34 +26,46 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
         self,
         hass: HomeAssistant,
         api: CircularApiClient,
+        entity_id: str | None = None,
     ) -> None:
         """Initialize the Coordinator."""
         super().__init__(
             hass,
             LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=2),
+            update_method=self._async_update_data,
+            update_interval=timedelta(seconds=UPDATE_INTERVAL),
         )
         self._api = api
+        self.entity_id = entity_id
 
     async def _async_update_data(self) -> CircularApiData:
-        if not self._api.is_polling_in_background:
-            LOGGER.info("Starting Circular Background Polling Loop")
-            await self._api.start_background_polling()
+        try:
+            async with async_timeout.timeout(UPDATE_INTERVAL):
+                await self._api.update_data()
 
-            # Don't return uninitialized poll data
-            async with timeout(15):
-                try:
-                    await self._api.poll()
-                except (ConnectionError, ClientConnectionError) as exception:
-                    raise UpdateFailed from exception
+            if self.entity_id:
+                # Obtenir la valeur actuelle de l'entité
+                state = self.hass.states.get(self.entity_id)
+                if state:
+                    entity_value = state.state
+                    try:
+                        # Vérifier si la valeur est numérique
+                        if entity_value not in ("unknown", "unavailable"):
+                            float_value = float(entity_value)
+                            await self._api.set_temperature_ask_by_external_entity(
+                                float_value
+                            )
+                    except ValueError:
+                        LOGGER.warning(
+                            "Invalid temperature value from entity %s: %s",
+                            self.entity_id,
+                            entity_value,
+                        )
 
-        LOGGER.debug("Failure Count %d", self._api.failed_poll_attempts)
-        if self._api.failed_poll_attempts > 10:
-            LOGGER.debug("Too many polling errors - raising exception")
-            raise UpdateFailed
-
-        return self._api.data
+            return self._api.data
+        except HAASAPIPollingError as err:
+            raise err from err
 
     @property
     def read_api(self) -> CircularApiClient:

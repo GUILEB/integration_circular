@@ -33,7 +33,11 @@ PLATFORMS = [
 # Configuration and options
 CONF_ENABLED = "enabled"
 CONF_HOST = "host"
+CONF_NAME = "name"
+CONF_ENTITY = "entity"
+CONF_UPDATE_INTERVAL = "update_interval"
 
+UPDATE_INTERVAL = 5
 # Defaults
 DEFAULT_NAME = DOMAIN
 DEFAULT_THERMOSTAT_TEMP = 21

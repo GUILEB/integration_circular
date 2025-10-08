@@ -2,22 +2,26 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
-from .api import CircularApiClient, CircularApiData
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .api import CircularApiClient, CircularApiData
+    from .coordinator import CircularDataUpdateCoordinator
 
 
-@dataclass()
+@dataclass(frozen=True)
 class CircularSwitchRequiredKeysMixin:
     """Mixin for required keys."""
 
@@ -26,7 +30,7 @@ class CircularSwitchRequiredKeysMixin:
     value_fn: Callable[[CircularApiData], bool]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularSwitchEntityDescription(
     SwitchEntityDescription, CircularSwitchRequiredKeysMixin
 ):
@@ -40,6 +44,13 @@ CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
         on_fn=lambda control_api: control_api.turn_on(),
         off_fn=lambda control_api: control_api.turn_off(),
         value_fn=lambda data: data.is_on,
+    ),
+    CircularSwitchEntityDescription(
+        key="Auto_regulated_temperature_by_external",
+        name="Stop Déviation",
+        on_fn=lambda control_api: control_api.auto_regulated_temperature_on(),
+        off_fn=lambda control_api: control_api.auto_regulated_temperature_off(),
+        value_fn=lambda data: data.auto_regulated_temperature,
     ),
 )
 

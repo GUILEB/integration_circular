@@ -1,43 +1,38 @@
 """API Client."""
 
-import asyncio
-import time
-from asyncio import Task
 from enum import Enum
 
 import aiohttp
-from aiohttp import ClientOSError
 
-from custom_components.circular.winet.exceptions import ApiRegisterError
 from custom_components.circular.winet.const import (
     WinetProductModel,
     WinetRegister,
     WinetRegisterCategory,
     WinetRegisterKey,
 )
+from custom_components.circular.winet.exceptions import WinetAPIError
 from custom_components.circular.winet.model import WinetGetRegisterResult
 from custom_components.circular.winet.winet import WinetAPILocal
 
 from .const import (
-    DOMAIN,
     LOGGER,
+    MAX_DELTA_ECOMODE_TEMP,
     MAX_FAN_SPEED,
     MAX_POWER,
     MAX_THERMOSTAT_TEMP,
+    MIN_DELTA_ECOMODE_TEMP,
     MIN_FAN_SPEED,
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
-    MIN_DELTA_ECOMODE_TEMP,
-    MAX_DELTA_ECOMODE_TEMP,
 )
 
 
-def clamp(value, valuemin, valuemax) -> float | int:
+def clamp(value: float, valuemin: float, valuemax: float) -> float | int:
     """Clamp value between min and max."""
-    return valuemin if value < valuemin else valuemax if value > valuemax else value
+    return max(valuemin, min(value, valuemax))
 
 
-class CircularDeviceStatus(Enum):  # type: ignore
+class CircularDeviceStatus(Enum):
     """Status Class based on the web-ui."""
 
     OFF = 0
@@ -83,7 +78,7 @@ class CircularDeviceStatus(Enum):  # type: ignore
         return f"Unknown status{self.name}"
 
 
-class CircularDeviceAlarm(Enum):  # type: ignore
+class CircularDeviceAlarm(Enum):
     """Winet alarm bytes."""
 
     NO_ALARM = 0
@@ -134,7 +129,7 @@ class CircularApiData:
         self.name = self._rawdata.name
         self.alr = self._rawdata.alr
         self.host = host
-        self.model = WinetProductModel(self._rawdata.model).get_message()
+        self.model = WinetProductModel(self._rawdata.model)
         self.status = CircularDeviceStatus.UNKNOWN
         self.alarms = []
         self.temperature_read = 0.0
@@ -143,6 +138,8 @@ class CircularApiData:
         self.fan_speed = 0
         self._delta_ecomode = 0.0
         self._delta_ecomode_ask = False
+        self.temperature_ask_by_external_entity = 0.0
+        self.auto_regulated_temperature = False
 
     def update(
         self,
@@ -201,7 +198,7 @@ class CircularApiData:
         LOGGER.error(f"RegisterId {registerid.value} not found in data")
         LOGGER.debug(self._rawdata)
         msg = "RegisterId not found in data"
-        raise ApiRegisterError(msg)
+        raise WinetAPIError(msg)
 
     def _decode_status(self) -> None:
         """Decode status register."""
@@ -305,114 +302,21 @@ class CircularApiData:
 class CircularApiClient:
     """Circular api client. use winet control api polling as backend."""
 
-    failed_poll_attempts = 0
-    is_sending = False
-    is_polling_in_background = False
-    stove_ip = ""
-
-    def __init__(self, session: aiohttp.ClientSession, host: str) -> None:
+    def __init__(self, session: aiohttp.ClientSession | None, host: str) -> None:
         """Init."""
         self._host = host
         self._session = session
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
-        self._should_poll_in_background = False
-        self._bg_task: Task | None = None
-
         self.stove_ip = host
-        self.is_polling_in_background = False
-        self.is_sending = False
-        self.failed_poll_attempts = 0
         self.delta_ecomode_ask = False
 
     @property
     def data(self) -> CircularApiData:
         """Returns decoded data from api raw data."""
         if self._data.name == "unset":
-            LOGGER.warning("Returning uninitialized poll data")
+            LOGGER.warning("Returning uninitialized data")
         return self._data
-
-    def log_status(self) -> None:
-        """Log a status message."""
-        LOGGER.info(
-            "CircularApiClient Status\n\tis_sending\t[%s]\n\tfailed_polls\t[%d]\n\tBG_Running\t[%s]\n\tBG_ShouldRun\t[%s]",  # noqa: E501
-            self.is_sending,
-            self.failed_poll_attempts,
-            self.is_polling_in_background,
-            self._should_poll_in_background,
-        )
-
-    async def start_background_polling(self, minimum_wait_in_seconds: int = 5) -> None:
-        """Start an ensure-future background polling loop."""
-        if self.is_sending:
-            LOGGER.info(
-                "!! Suppressing start_background_polling -- sending mode engaged"
-            )
-            return
-
-        if not self._should_poll_in_background:
-            self._should_poll_in_background = True
-            LOGGER.info("!!  start_background_polling !!")
-
-            self._bg_task = asyncio.create_task(
-                self.__background_poll(minimum_wait_in_seconds),
-                name="background_polling",
-            )
-
-    def stop_background_polling(self) -> bool:
-        """Stop background polling - return whether it had been polling."""
-        self._should_poll_in_background = False
-        was_running = False
-        if self._bg_task and not self._bg_task.cancelled():
-            was_running = True
-            self._bg_task.cancel()
-            LOGGER.info("Stopping background task to issue a command")
-
-        return was_running
-
-    async def __background_poll(self, minimum_wait_in_seconds: int = 5) -> None:
-        """Perform a polling loop."""
-        LOGGER.debug("__background_poll:: Function Called")
-
-        self.failed_poll_attempts = 0
-
-        self.is_polling_in_background = True
-        while self._should_poll_in_background:
-            start = time.time()
-            LOGGER.debug("__background_poll:: Loop start time %f", start)
-
-            try:
-                await self.poll()
-                self.failed_poll_attempts = 0
-                end = time.time()
-
-                duration: float = end - start
-                sleep_time: float = minimum_wait_in_seconds - duration
-
-                LOGGER.debug(
-                    "__background_poll:: [%f] Sleeping for [%fs]", duration, sleep_time
-                )
-
-                LOGGER.debug(
-                    "__background_poll:: duration: %f, %f, %.2fs",
-                    start,
-                    end,
-                    (end - start),
-                )
-                LOGGER.debug(
-                    "__background_poll:: Should Sleep For: %f",
-                    (minimum_wait_in_seconds - (end - start)),
-                )
-
-                await asyncio.sleep(minimum_wait_in_seconds - (end - start))
-            except (ConnectionError, ClientOSError):
-                self.failed_poll_attempts += 1
-                LOGGER.info(
-                    "__background_poll:: Polling error [x%d]", self.failed_poll_attempts
-                )
-
-        self.is_polling_in_background = False
-        LOGGER.info("__background_poll:: Background polling disabled.")
 
     async def set_fan_speed(self, value: float) -> None:
         """Set air room vent fan speed."""
@@ -441,7 +345,7 @@ class CircularApiClient:
         value = clamp(
             float(value), float(MIN_THERMOSTAT_TEMP), float(MAX_THERMOSTAT_TEMP)
         )
-        LOGGER.warning(f"Set temperature to {value}")
+        LOGGER.warning(f"Set winet temperature to {value}")
         await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
 
     async def set_temperature_with_delta(self, value: float) -> None:
@@ -477,8 +381,32 @@ class CircularApiClient:
         LOGGER.debug("Turn stove off")
         await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
 
-    async def poll(self) -> None:
-        """Poll the Winet module locally."""
+    async def auto_regulated_temperature_on(self) -> None:
+        """Turn on automatic temperature regulation for the stove."""
+        LOGGER.debug("Regulated Temperature - on")
+        self.data.auto_regulated_temperature = True
+
+    async def auto_regulated_temperature_off(self) -> None:
+        """Turn off automatic temperature regulation for the stove."""
+        LOGGER.debug("Regulated Temperature - off")
+        self.data.auto_regulated_temperature = False
+
+    async def set_temperature_ask_by_external_entity(self, value: float) -> None:
+        """Set temperature ask by external entity."""
+        if (
+            self.data.auto_regulated_temperature
+            and not self.delta_ecomode_ask
+            and value != self.data.temperature_set
+        ):
+            LOGGER.warning(
+                f"Regulated Temperature : winet Temp. {self.data.temperature_set} °C"
+                f" vs External Temp. {value} °C"
+            )
+            await self.set_temperature(value)
+            self.data.temperature_ask_by_external_entity = value
+
+    async def update_data(self) -> None:
+        """Update data  the Winet module locally."""
         # Update Alarm Temp,Power
 
         result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)

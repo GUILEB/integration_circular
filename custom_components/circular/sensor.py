@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -12,26 +11,31 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTemperature
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.const import EntityCategory, UnitOfTemperature
 
 from .const import DOMAIN
-from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
-from .api import CircularApiData
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
+
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+    from .api import CircularApiData
+    from .coordinator import CircularDataUpdateCoordinator
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularSensorRequiredKeysMixin:
     """Mixin for required keys."""
 
     value_fn: Callable[[CircularApiData], float | int | str | datetime | None]
 
 
-@dataclass
+@dataclass(frozen=True)
 class CircularSensorEntityDescription(
     SensorEntityDescription,
     CircularSensorRequiredKeysMixin,
@@ -72,7 +76,6 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
         key="alarms",
         name="Alarms",
         value_fn=lambda data: data.alr,
-        # entity_registry_enabled_default=False,
     ),
     CircularSensorEntityDescription(
         key="name",
@@ -93,7 +96,6 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
         name="Wifi Signal Strength",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.signal,
-        # entity_registry_enabled_default=False,
     ),
     CircularSensorEntityDescription(
         key="product_model",
@@ -109,7 +111,6 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Define setup entry call."""
-
     coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         CircularSensor(coordinator=coordinator, description=description)
