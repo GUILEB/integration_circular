@@ -136,8 +136,8 @@ class CircularApiData:
         self.temperature_set = 0.0
         self.power_set = 0
         self.fan_speed = 0
-        self._delta_ecomode = 0.0
-        self._delta_ecomode_ask = False
+        self.delta_ecomode = 0.0
+        self.eco_mode_drive_activated = False
         self.temperature_ask_by_external_entity = 0.0
         self.auto_regulated_temperature = False
 
@@ -309,7 +309,7 @@ class CircularApiClient:
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
         self.stove_ip = host
-        self.delta_ecomode_ask = False
+        self.count_delta_ecomode_asked = 0
 
     @property
     def data(self) -> CircularApiData:
@@ -348,24 +348,39 @@ class CircularApiClient:
         LOGGER.warning(f"Set winet temperature to {value}")
         await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
 
-    async def set_temperature_with_delta(self, value: float) -> None:
-        """Send set register with key=002&memory=1&regId=50&value={value} ."""
-        # self defined min/max values
-        value = min(value + self._delta_ecomode, value)
-        self.delta_ecomode_ask = True
-        value = clamp(
-            float(value), float(MIN_THERMOSTAT_TEMP), float(MAX_THERMOSTAT_TEMP)
-        )
-        LOGGER.warning(f"Set temperature with delta to {value}")
-        await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
+    async def start_eco_mode_heating(self) -> None:
+        """Start stove in ecoMode State."""
+        # Force le démarrage du poele dans le mode EcoMode
+        self.count_delta_ecomode_asked += 1
 
-    async def set_temperature_without_delta(self, value: float) -> None:
-        """Send set register with key=002&memory=1&regId=50&value={value} ."""
-        # Stop ecomode with real target temperature
-        if self.data.is_heating and self.delta_ecomode_ask:
-            value = max(value - self._delta_ecomode, value)
-            self.delta_ecomode_ask = False
-            await self.set_temperature(value)
+    async def eco_mode_drive(self) -> None:
+        """Gestion de l'activation du poele à partir de l'état initiale EcoMode ."""
+        # Demande de Chauffe avec un poele en EcoMode
+        if self.data.eco_mode_drive_activated and self.count_delta_ecomode_asked > 0:
+            # Vérification que le Poele est en Eco Mode
+            if self.data.is_ecomode_stop and self.count_delta_ecomode_asked == 1:
+                # Ajout de l temparature de Delta à la temperature de Consigne
+                # pour activer le poele
+                value = clamp(
+                    self.data.temperature_set + self._delta_ecomode,
+                    float(MIN_THERMOSTAT_TEMP),
+                    float(MAX_THERMOSTAT_TEMP),
+                )
+                LOGGER.warning(f"ECODRIVE : Set temperature {value} to start stove. ")
+                await self._winetclient.set_register(
+                    WinetRegister.TEMPERATURE_SET, int(value)
+                )
+            elif self.data.is_heating and self.count_delta_ecomode_asked > 0:
+                # Poele en WORK : Fin de l'actiivation de l'EcoMode
+                # Application de la consigne demandée
+                value = clamp(
+                    self.data.temperature_set,
+                    float(MIN_THERMOSTAT_TEMP),
+                    float(MAX_THERMOSTAT_TEMP),
+                )
+                LOGGER.warning(f"ECODRIVE : Set temperature {value} to complete. ")
+                self.count_delta_ecomode_asked = 0
+                await self.set_temperature(value)
 
     async def turn_on(self) -> None:
         """Turn on the stove."""
@@ -381,6 +396,16 @@ class CircularApiClient:
         LOGGER.debug("Turn stove off")
         await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
 
+    async def eco_mode_drive_on(self) -> None:
+        """Turn on Eco Drive Mode."""
+        LOGGER.debug("Regulated Temperature - on")
+        self.data.eco_mode_drive_activated = True
+
+    async def eco_mode_drive_off(self) -> None:
+        """Turn off Eco Drive Mode."""
+        LOGGER.debug("Regulated Temperature - off")
+        self.data.eco_mode_drive_activated = False
+
     async def auto_regulated_temperature_on(self) -> None:
         """Turn on automatic temperature regulation for the stove."""
         LOGGER.debug("Regulated Temperature - on")
@@ -395,7 +420,7 @@ class CircularApiClient:
         """Set temperature ask by external entity."""
         if (
             self.data.auto_regulated_temperature
-            and not self.delta_ecomode_ask
+            and self.data.is_heating
             and value != self.data.temperature_set
         ):
             LOGGER.warning(
@@ -436,5 +461,5 @@ class CircularApiClient:
             self._data.update(
                 newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_6
             )
-        # Take account  EcoMode
-        await self.set_temperature_without_delta(self._data.temperature_set)
+        # EcoMode Drive
+        await self.eco_mode_drive()

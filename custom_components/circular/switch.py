@@ -41,11 +41,18 @@ CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
         value_fn=lambda data: data.is_on,
     ),
     CircularSwitchEntityDescription(
-        key="Auto_regulated_temperature_by_external",
-        name="Stop Déviation",
+        key="Auto_regulated_temperature_by_external_on_off",
+        name="Stop Déviation Mode",
         on_fn=lambda control_api: control_api.auto_regulated_temperature_on(),
         off_fn=lambda control_api: control_api.auto_regulated_temperature_off(),
         value_fn=lambda data: data.auto_regulated_temperature,
+    ),
+    CircularSwitchEntityDescription(
+        key="ecodrivemode_on_off",
+        name="Eco Drive Mode",
+        on_fn=lambda control_api: control_api.eco_mode_drive_on(),
+        off_fn=lambda control_api: control_api.eco_mode_drive_off(),
+        value_fn=lambda data: data.eco_mode_drive_activated,
     ),
 )
 
