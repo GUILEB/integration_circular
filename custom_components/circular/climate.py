@@ -122,14 +122,12 @@ class CircularClimate(CircularEntity, ClimateEntity):
             await self.coordinator.control_api.set_temperature(temp_c)
             return
 
-        # ECO MODE : Restauration de la consigne de temperature, suite arrêt en ECO Mode
+        # ECO MODE : Demmarrage du poele s'il était arrêté en EcoMode
         if (
             hvac_mode == HVACMode.HEAT
             and self.coordinator.read_api.data.is_ecomode_stop
         ):
-            await self.coordinator.control_api.set_temperature_with_delta(
-                self.coordinator.read_api.data.temperature_read
-            )
+            await self.coordinator.control_api.start_eco_mode_heating()
         return
 
     async def async_set_temperature(self, **kwargs: Any) -> None:

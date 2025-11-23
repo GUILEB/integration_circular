@@ -31,6 +31,40 @@ class WinetAPILocal:
         self._session = session
         self._stove_ip = stove_ip
 
+    async def get_root(self) -> str | None:
+        """Fetch the device root page (replicates captured GET / request)."""
+        async with aiohttp.ClientSession() as session:
+            url = f"http://{self._stove_ip}/"
+            headers = {
+                "Host": f"{self._stove_ip}",
+                "Connection": "keep-alive",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Sec-GPC": "1",
+                "Accept-Language": "fr-FR,fr;q=0.6",
+                "Accept-Encoding": "gzip, deflate",
+                "Cookie": "winet_lang=fr",
+            }
+            LOGGER.debug("GET %s with headers=%s", url, headers)
+            try:
+                async with session.get(url, headers=headers) as response:
+                    if response.status != HTTPStatus.OK:
+                        msg = f"Response status {response.status}"
+                        raise WinetAPIConnectionError(msg)
+                    text = await response.text()
+                    LOGGER.debug("Received root page (%d bytes)", len(text))
+                    return text
+            except (
+                ServerDisconnectedError,
+                ClientConnectorError,
+                ClientOSError,
+                ConnectionError,
+                UnboundLocalError,
+            ) as exc:
+                msg = f"Connection failed {url}"
+                raise WinetAPIConnectionError(msg, exc) from None
+
     async def get_registers(
         self,
         key: WinetRegisterKey,
@@ -47,19 +81,16 @@ class WinetAPILocal:
             headers = {
                 "Access-Control-Request-Method": "POST",
                 "Host": f"{self._stove_ip}",
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0"
-                ),
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Accept-Encoding": "gzip, deflate",
-                "Content-Type": "application/json; charset=utf-8",
+                "Connection": "keep-alive",
                 "X-Requested-With": "XMLHttpRequest",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+                "Accept": "application/json, text/javascript, */*; q=0.01",
+                "Content-Type": "application/json; charset=UTF-8",
+                "Sec-GPC": "1",
+                "Accept-Language": "fr-FR,fr;q=0.6",
                 "Origin": f"http://{self._stove_ip}",
                 "Referer": f"http://{self._stove_ip}/management.html",
-                "Accept-Language": "fr,fr-FR;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-                "Connection": "keep - alive",
+                "Accept-Encoding": "gzip, deflate",
             }
             LOGGER.debug("Querying %s with data=%s", url, data)
             try:
