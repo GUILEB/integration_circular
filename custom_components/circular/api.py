@@ -408,7 +408,7 @@ class CircularApiClient:
     async def update_data(self) -> None:
         """Update data  the Winet module locally."""
         # Update Alarm Temp,Power
-
+        result = await self._winetclient.get_root()
         result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)
         if result is not None:
             self._data.update(newdata=result, category=WinetRegisterCategory.NONE)

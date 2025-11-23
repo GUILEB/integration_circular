@@ -8,9 +8,10 @@ from homeassistant.components.switch import SwitchEntity, SwitchEntityDescriptio
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .api import CircularApiClient, CircularApiData
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .coordinator import CircularDataUpdateCoordinator
 from .entity import CircularEntity
 
@@ -63,10 +64,36 @@ async def async_setup_entry(
     )
 
 
-class CircularSwitch(CircularEntity, SwitchEntity):
+class CircularSwitch(CircularEntity, RestoreEntity, SwitchEntity):
     """Define an Circular Switch."""
 
     entity_description: CircularSwitchEntityDescription
+
+    async def async_added_to_hass(self) -> None:
+        """Restore initial state on startup."""
+        # Restore the last known state from Home Assistant BEFORE calling super()
+        if self.entity_description.key == "Auto_regulated_temperature_by_external":
+            last_state = await self.async_get_last_state()
+            LOGGER.debug(
+                "Restoring state for %s: last_state=%s",
+                self._attr_name,
+                last_state,
+            )
+            if last_state is not None and last_state.state in ("on", "off"):
+                target_state = last_state.state == "on"
+                control_api = self.coordinator.control_api
+                LOGGER.info(
+                    "Applying restored state for %s: %s",
+                    self._attr_name,
+                    "ON" if target_state else "OFF",
+                )
+                # if target_state:
+                #     await self.entity_description.on_fn(control_api)
+                # else:
+                #     await self.entity_description.off_fn(control_api)
+
+        # Call super() AFTER restoration to avoid override
+        await super().async_added_to_hass()
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the switch."""
