@@ -120,15 +120,13 @@ class CircularClimate(CircularEntity, ClimateEntity):
                 self.coordinator.read_api.data.temperature_read, self.last_temp
             )
             await self.coordinator.control_api.set_temperature(temp_c)
-            return
 
         # ECO MODE : Demmarrage du poele s'il était arrêté en EcoMode
-        if (
+        elif (
             hvac_mode == HVACMode.HEAT
             and self.coordinator.read_api.data.is_ecomode_stop
         ):
             await self.coordinator.control_api.start_eco_mode_heating()
-        return
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""

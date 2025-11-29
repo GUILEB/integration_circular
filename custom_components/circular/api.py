@@ -357,30 +357,21 @@ class CircularApiClient:
         """Gestion de l'activation du poele à partir de l'état initiale EcoMode ."""
         # Demande de Chauffe avec un poele en EcoMode
         if self.data.eco_mode_drive_activated and self.count_delta_ecomode_asked > 0:
+            temp_value = self.data.temperature_set
             # Vérification que le Poele est en Eco Mode
             if self.data.is_ecomode_stop and self.count_delta_ecomode_asked == 1:
                 # Ajout de l temparature de Delta à la temperature de Consigne
                 # pour activer le poele
-                value = clamp(
-                    self.data.temperature_set + self._delta_ecomode,
-                    float(MIN_THERMOSTAT_TEMP),
-                    float(MAX_THERMOSTAT_TEMP),
-                )
-                LOGGER.warning(f"ECODRIVE : Set temperature {value} to start stove. ")
-                await self._winetclient.set_register(
-                    WinetRegister.TEMPERATURE_SET, int(value)
-                )
+                temp_value = self.data.temperature_set + self._delta_ecomode
+                LOGGER.info("ECODRIVE - Start Begin")
+                await self.set_temperature(temp_value)
+
             elif self.data.is_heating and self.count_delta_ecomode_asked > 0:
-                # Poele en WORK : Fin de l'actiivation de l'EcoMode
+                # Poele en WORK : Fin de l'activation de l'EcoMode
                 # Application de la consigne demandée
-                value = clamp(
-                    self.data.temperature_set,
-                    float(MIN_THERMOSTAT_TEMP),
-                    float(MAX_THERMOSTAT_TEMP),
-                )
-                LOGGER.warning(f"ECODRIVE : Set temperature {value} to complete. ")
+                LOGGER.info("ECODRIVE - Start Completed")
                 self.count_delta_ecomode_asked = 0
-                await self.set_temperature(value)
+                await self.set_temperature(temp_value)
 
     async def turn_on(self) -> None:
         """Turn on the stove."""
@@ -432,8 +423,9 @@ class CircularApiClient:
 
     async def update_data(self) -> None:
         """Update data  the Winet module locally."""
+        LOGGER.info("Updating data from Winet module")
         # Update Alarm Temp,Power
-        result = await self._winetclient.get_root()
+        # result = await self._winetclient.get_root()
         result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)
         if result is not None:
             self._data.update(newdata=result, category=WinetRegisterCategory.NONE)
