@@ -81,5 +81,5 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
             name=self.read_api.data.name,
             identifiers={("Circular", f"{self.read_api.data.model}]")},
             sw_version="1.0",
-            configuration_url=f"http://{self._api.stove_ip}/",
+            configuration_url=f"http://{self._api._host}/",
         )

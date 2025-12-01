@@ -79,18 +79,21 @@ class WinetAPILocal:
                 data["category"] = str(category.value)
 
             headers = {
-                "Access-Control-Request-Method": "POST",
-                "Host": f"{self._stove_ip}",
-                "Connection": "keep-alive",
+                # "Access-Control-Request-Method": "POST",
+                # "Host": f"{self._stove_ip}",
+                # "Connection": "keep-alive",
+                # "X-Requested-With": "XMLHttpRequest",
+                # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
+                # "Accept": "application/json, text/javascript, */*; q=0.01",
+                # "Content-Type": "application/json; charset=UTF-8",
+                # # "Sec-GPC": "1",
+                # "Accept-Language": "fr-FR,fr;q=0.6",
+                # "Origin": f"http://{self._stove_ip}",
+                # "Referer": f"http://{self._stove_ip}/management.html",
+                # "Accept-Encoding": "gzip, deflate",
+                "Content-Type": "application/json; charset=utf-8",
                 "X-Requested-With": "XMLHttpRequest",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
                 "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Content-Type": "application/json; charset=UTF-8",
-                "Sec-GPC": "1",
-                "Accept-Language": "fr-FR,fr;q=0.6",
-                "Origin": f"http://{self._stove_ip}",
-                "Referer": f"http://{self._stove_ip}/management.html",
-                "Accept-Encoding": "gzip, deflate",
             }
             LOGGER.debug("Querying %s with data=%s", url, data)
             try:
@@ -141,19 +144,22 @@ class WinetAPILocal:
                 "value": str(value),
             }
             headers = {
-                "Access-Control-Request-Method": "POST",
-                "Host": f"{self._stove_ip}",
-                "User-Agent": (
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0"
-                ),
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-                "Accept-Encoding": "gzip, deflate",
+                # "Access-Control-Request-Method": "POST",
+                # "Host": f"{self._stove_ip}",
+                # "User-Agent": (
+                #     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                #     "AppleWebKit/537.36 (KHTML, like Gecko) "
+                #     "Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0"
+                # ),
+                # "Accept": "application/json, text/javascript, */*; q=0.01",
+                # "Accept-Encoding": "gzip, deflate",
+                # "Content-Type": "application/json; charset=utf-8",
+                # "X-Requested-With": "XMLHttpRequest",
+                # "Origin": f"http://{self._stove_ip}",
+                # "Referer": f"http://{self._stove_ip}/management.html",
                 "Content-Type": "application/json; charset=utf-8",
                 "X-Requested-With": "XMLHttpRequest",
-                "Origin": f"http://{self._stove_ip}",
-                "Referer": f"http://{self._stove_ip}/management.html",
+                "Accept": "application/json, text/javascript, */*; q=0.01",
             }
             LOGGER.debug("Posting to %s, data=%s", url, data)
             try:
