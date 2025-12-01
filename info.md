@@ -50,3 +50,17 @@ Platform | Description
 <!--[releases-shield]: https://img.shields.io/github/release/docteurzoidberg/ha-invicta.svg?style=for-the-badge -->
 [releases]: https://github.com/GUILEB/integration_circular/releases
 [user_profile]: https://github.com/GUILEB/
+
+## TODOList
+
+- [] Probleme de mise à jour des données (retro)
+- [] Récuperer des valeurs par defaut
+- [] Ajouter Cicular au Log system
+- [] Implementer les TU
+- [] Mise à jour Documentation
+- [] Ajouter les informations de status (Page Wifi)
+- [] Mise à jour auto de la version du Manifest
+- [] Factoriser le gestion des appels http
+
+
+

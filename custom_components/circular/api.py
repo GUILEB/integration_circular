@@ -308,8 +308,7 @@ class CircularApiClient:
         self._session = session
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
-        self.stove_ip = host
-        self.count_delta_ecomode_asked = 0
+        self._count_delta_ecomode_asked = 0
 
     @property
     def data(self) -> CircularApiData:
@@ -351,22 +350,23 @@ class CircularApiClient:
     async def start_eco_mode_heating(self) -> None:
         """Start stove in ecoMode State."""
         # Force le démarrage du poele dans le mode EcoMode
-        self.count_delta_ecomode_asked += 1
+        self._count_delta_ecomode_asked = self._count_delta_ecomode_asked + 1
+        LOGGER.debug(f"ECODRIVE - Count asked : {self._count_delta_ecomode_asked}")
 
     async def eco_mode_drive(self) -> None:
         """Gestion de l'activation du poele à partir de l'état initiale EcoMode ."""
         # Demande de Chauffe avec un poele en EcoMode
-        if self.data.eco_mode_drive_activated and self.count_delta_ecomode_asked > 0:
+        if self.data.eco_mode_drive_activated and self._count_delta_ecomode_asked > 0:
             temp_value = self.data.temperature_set
             # Vérification que le Poele est en Eco Mode
-            if self.data.is_ecomode_stop and self.count_delta_ecomode_asked == 1:
+            if self.data.is_ecomode_stop and self._count_delta_ecomode_asked == 1:
                 # Ajout de l temparature de Delta à la temperature de Consigne
                 # pour activer le poele
                 temp_value = self.data.temperature_set + self._delta_ecomode
                 LOGGER.info("ECODRIVE - Start Begin")
                 await self.set_temperature(temp_value)
 
-            elif self.data.is_heating and self.count_delta_ecomode_asked > 0:
+            elif self.data.is_heating and self._count_delta_ecomode_asked > 0:
                 # Poele en WORK : Fin de l'activation de l'EcoMode
                 # Application de la consigne demandée
                 LOGGER.info("ECODRIVE - Start Completed")
@@ -423,35 +423,47 @@ class CircularApiClient:
 
     async def update_data(self) -> None:
         """Update data  the Winet module locally."""
-        LOGGER.info("Updating data from Winet module")
-        # Update Alarm Temp,Power
-        # result = await self._winetclient.get_root()
-        result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)
-        if result is not None:
-            self._data.update(newdata=result, category=WinetRegisterCategory.NONE)
+        LOGGER.debug("Updating data from Winet module")
 
-        result = await self._winetclient.get_registers(
-            WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_2
-        )
-        if result is not None:
-            self._data.update(
-                newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_2
+        update_subscribe = True
+        update_pool2 = True
+        update_pool4 = False
+        update_pool6 = False
+
+        # Update Alarm Temp,Power
+        if update_subscribe:
+            result = await self._winetclient.get_registers(WinetRegisterKey.SUBSCRIBE)
+            if result is not None:
+                self._data.update(newdata=result, category=WinetRegisterCategory.NONE)
+
+        if update_pool2:
+            result = await self._winetclient.get_registers(
+                WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_2
             )
-        # Update Configuration : Fan
-        result = await self._winetclient.get_registers(
-            WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_4
-        )
-        if result is not None:
-            self._data.update(
-                newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_4
+            if result is not None:
+                self._data.update(
+                    newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_2
+                )
+
+        if update_pool4:
+            # Update Configuration : Fan
+            result = await self._winetclient.get_registers(
+                WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_4
             )
-        # Update Alarm
-        result = await self._winetclient.get_registers(
-            WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_6
-        )
-        if result is not None:
-            self._data.update(
-                newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_6
+            if result is not None:
+                self._data.update(
+                    newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_4
+                )
+
+        if update_pool6:
+            # Update Alarm
+            result = await self._winetclient.get_registers(
+                WinetRegisterKey.POLL_DATA, WinetRegisterCategory.POLL_CATEGORY_6
             )
+            if result is not None:
+                self._data.update(
+                    newdata=result, category=WinetRegisterCategory.POLL_CATEGORY_6
+                )
+
         # EcoMode Drive
         await self.eco_mode_drive()
