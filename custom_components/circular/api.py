@@ -412,13 +412,14 @@ class CircularApiClient:
         # Demande de Chauffe avec un poele en EcoMode
         if self.data.eco_mode_drive_activated and self._count_delta_ecomode_asked > 0:
             temp_value = self.data.temperature_set
-            # Vérification que le Poele est en Eco Mode
+            # Demande de Demarrage à partir de Eco Mode : Activation Read + EcoDelta
             if self.data.is_ecomode_stop and self._count_delta_ecomode_asked == 1:
-                # Ajout de l temparature de Delta à la temperature de Consigne
-                # pour activer le poele
-                temp_value = self.data.temperature_set + self._delta_ecomode
-                LOGGER.info("ECODRIVE - Start Begin")
-                await self.set_temperature(temp_value)
+                temp_diff = self.data.temperature_set - self.data.temperature_read
+                # Si la différence n'est pas assez grande => force le demarrage
+                if temp_diff <= self._delta_ecomode:
+                    LOGGER.info("ECODRIVE - Start Begin")
+                    temp_value = self.data.temperature_read + self._delta_ecomode
+                    await self.set_temperature(temp_value)
 
             elif self.data.is_heating and self._count_delta_ecomode_asked > 0:
                 # Poele en WORK : Fin de l'activation de l'EcoMode
