@@ -1,5 +1,6 @@
 """API Client."""
 
+import asyncio
 from enum import Enum
 from threading import Lock
 
@@ -180,13 +181,13 @@ class CircularApiData:
 
                 # Decode specific categories with change tracking
                 if category == WinetRegisterCategory.POLL_CATEGORY_2:
-                    self._update_temperature_data()
+                    self._update_cat2_data()
                     self._changed_fields.update(
                         ["temperature_read", "temperature_set", "power_set", "status"]
                     )
 
                 elif category == WinetRegisterCategory.POLL_CATEGORY_6:
-                    self._update_alarm_data()
+                    self._update_cat6_data()
                     self._changed_fields.update(["alarms", "fan_speed"])
 
                 elif category == WinetRegisterCategory.POLL_CATEGORY_4:
@@ -205,7 +206,7 @@ class CircularApiData:
                 LOGGER.error(f"Error updating data: {e}")
                 raise
 
-    def _update_temperature_data(self) -> None:
+    def _update_cat2_data(self) -> None:
         """Update all temperature-related data atomically."""
         temp_threshold = 0.1
         try:
@@ -234,7 +235,7 @@ class CircularApiData:
         except WinetAPIError as e:
             LOGGER.warning(f"Failed to update temperature data: {e}")
 
-    def _update_alarm_data(self) -> None:
+    def _update_cat6_data(self) -> None:
         """Update all alarm-related data atomically."""
         try:
             self._decode_alarms()
@@ -502,7 +503,7 @@ class CircularApiClient:
                 },
                 {
                     "name": "category_4",
-                    "enabled": True,
+                    "enabled": False,
                     "key": WinetRegisterKey.POLL_DATA,
                     "category": WinetRegisterCategory.POLL_CATEGORY_4,
                 },
@@ -541,6 +542,9 @@ class CircularApiClient:
                         exc_info=True,
                     )
                     continue
+
+                # Add delay between updates
+                await asyncio.sleep(0.5)
 
             # EcoMode Drive handling
             await self.eco_mode_drive()
