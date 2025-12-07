@@ -7,6 +7,7 @@
   "issue_tracker": "https://github.com/GUILEB/integration_circular/issues",
   "requirements": [
     "aiohttp",
+    "asyncio",
     "pydantic"
   ],
   "codeowners": [
@@ -14,5 +15,5 @@
   ],
   "iot_class": "local_polling",
   "loggers": [],
-  "version": "1.2.1"
+  "version": "1.3.0"
 }
