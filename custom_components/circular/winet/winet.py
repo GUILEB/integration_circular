@@ -1,190 +1,164 @@
-#!/usr/bin/env python3
 """Winet-Control API."""
 
 import logging
-from http import HTTPStatus
-from json import JSONDecodeError
 
 import aiohttp
-from aiohttp import (
-    ClientConnectorError,
-    ClientOSError,
-    ServerDisconnectedError,
-)
 
-from .const import (
-    WinetRegister,
-    WinetRegisterCategory,
-    WinetRegisterKey,
-)
-from .exceptions import WinetAPIConnectionError, WinetAPIJsonDecodeError
+from .const import WinetRegister, WinetRegisterCategory, WinetRegisterKey
+from .exceptions import WinetAPIJsonDecodeError
+from .HTTPRequestExecutor import HTTPRequestBuilder, HTTPRequestExecutor
 from .model import WinetGetRegisterResult
 
 LOGGER = logging.getLogger(__package__)
 
 
 class WinetAPILocal:
-    """Bottom level API. handle http communication with the local winet module."""
+    """Bottom level API. Handle HTTP communication with the local Winet module."""
 
     def __init__(self, session: aiohttp.ClientSession | None, stove_ip: str) -> None:
-        """Initialize Winet local api."""
+        """
+        Initialize Winet local API.
+
+        Args:
+            session: aiohttp ClientSession (optional)
+            stove_ip: IP address of the Winet device
+
+        """
         self._session = session
         self._stove_ip = stove_ip
+        self._base_url = f"http://{stove_ip}"
 
-    async def get_root(self) -> str | None:
-        """Fetch the device root page (replicates captured GET / request)."""
-        async with aiohttp.ClientSession() as session:
-            url = f"http://{self._stove_ip}/"
-            headers = {
-                "Host": f"{self._stove_ip}",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-                "Sec-GPC": "1",
-                "Accept-Language": "fr-FR,fr;q=0.6",
-                "Accept-Encoding": "gzip, deflate",
-                "Cookie": "winet_lang=fr",
-            }
-            LOGGER.debug("GET %s with headers=%s", url, headers)
-            try:
-                async with session.get(url, headers=headers) as response:
-                    if response.status != HTTPStatus.OK:
-                        msg = f"Response status {response.status}"
-                        raise WinetAPIConnectionError(msg)
-                    text = await response.text()
-                    LOGGER.debug("Received root page (%d bytes)", len(text))
-                    return text
-            except (
-                ServerDisconnectedError,
-                ClientConnectorError,
-                ClientOSError,
-                ConnectionError,
-                UnboundLocalError,
-            ) as exc:
-                msg = f"Connection failed {url}"
-                raise WinetAPIConnectionError(msg, exc) from None
+        # Initialize request builder with default headers
+        self._request_builder = HTTPRequestBuilder(
+            self._base_url,
+            self._get_default_headers(),
+        )
+
+        # Initialize request executor
+        self._request_executor = HTTPRequestExecutor(session)
+
+    @staticmethod
+    def _get_default_headers() -> dict[str, str]:
+        """
+        Get default HTTP headers for Winet API requests.
+
+        Returns:
+            Dictionary of default headers
+
+        """
+        return {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/141.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "fr-FR,fr;q=0.6",
+            "Accept-Encoding": "gzip, deflate",
+        }
 
     async def get_registers(
         self,
         key: WinetRegisterKey,
-        category: WinetRegisterCategory = WinetRegisterCategory.NONE,
+        category: WinetRegisterCategory | None = None,
     ) -> WinetGetRegisterResult | None:
-        """Poll registers."""
-        async with aiohttp.ClientSession() as session:
-            url = f"http://{self._stove_ip}/ajax/get-registers"
-            data = {"key": key.value}
+        """
+        Poll registers from the Winet device.
 
-            if category != WinetRegisterCategory.NONE:
-                data["category"] = str(category.value)
+        Args:
+            key: Register key to poll
+            category: Register category filter (optional)
 
-            headers = {
-                # "Access-Control-Request-Method": "POST",
-                # "Host": f"{self._stove_ip}",
-                # "Connection": "keep-alive",
-                # "X-Requested-With": "XMLHttpRequest",
-                # "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36",
-                # "Accept": "application/json, text/javascript, */*; q=0.01",
-                # "Content-Type": "application/json; charset=UTF-8",
-                # # "Sec-GPC": "1",
-                # "Accept-Language": "fr-FR,fr;q=0.6",
-                # "Origin": f"http://{self._stove_ip}",
-                # "Referer": f"http://{self._stove_ip}/management.html",
-                # "Accept-Encoding": "gzip, deflate",
-                "Content-Type": "application/json; charset=utf-8",
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-            }
-            LOGGER.debug("Querying %s with data=%s", url, data)
-            try:
-                async with session.post(url, data=data, headers=headers) as response:
-                    try:
-                        if response.status != HTTPStatus.OK:
-                            msg = f"Response status {response.status}"
-                            raise WinetAPIConnectionError(msg)
-                        try:
-                            json_data = await response.json(content_type=None)
-                            LOGGER.debug("Received: %s", json_data)
+        Returns:
+            WinetGetRegisterResult object with device data
 
-                            # Update Data
-                            if "result" not in json_data:
-                                return WinetGetRegisterResult(**json_data)
-                            # handle an action's result
-                            if "result" in json_data and json_data["result"] is False:
-                                LOGGER.warning("Api result is False")
-                        except JSONDecodeError:
-                            msg = f"Error decoding JSON: [{response.text}]"
-                            raise WinetAPIJsonDecodeError(msg) from None
+        Raises:
+            WinetAPIConnectionError: On connection or HTTP errors
+            WinetAPIJsonDecodeError: On JSON decode errors
 
-                    except ConnectionError as exc:
-                        msg = "ConnectionError - host not found"
-                        raise WinetAPIConnectionError(msg, exc) from None
+        """
+        data = {"key": key.value}
 
-            except (
-                ServerDisconnectedError,
-                ClientConnectorError,
-                ClientOSError,
-                ConnectionError,
-                UnboundLocalError,
-            ) as exc:
-                msg = f"Connection failed {url}"
-                raise WinetAPIConnectionError(msg, exc) from None
+        if category is not None:
+            data["category"] = str(category.value)
+
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+        }
+
+        request = self._request_builder.build_post_request(
+            "/ajax/get-registers",
+            data=data,
+            headers=headers,
+        )
+
+        try:
+            response = await self._request_executor.execute(request)
+
+            if isinstance(response, dict):
+                # Handle an action's result
+                if "result" in response and response["result"] is False:
+                    LOGGER.warning("Api result is False")
+
+                # Update Data
+                if "result" not in response:
+                    return WinetGetRegisterResult(**response)
+            else:
+                return None
+
+        except WinetAPIJsonDecodeError:
+            msg = f"Error decoding JSON response from {request.url}"
+            LOGGER.exception("%s", msg)
+            raise
 
     async def set_register(
-        self, registerid: WinetRegister, value: int, key: str = "002", memory: int = 1
+        self,
+        registerid: WinetRegister,
+        value: int,
+        key: str = "002",
+        memory: int = 1,
     ) -> None:
-        """Send raw register values !!!."""
-        # data exemple: key=002&memory=1&regId=51&value=3
-        async with aiohttp.ClientSession() as session:
-            url = f"http://{self._stove_ip}/ajax/set-register"
-            data = {
-                "key": key,
-                "memory": str(memory),
-                "regId": str(registerid.value),
-                "value": str(value),
-            }
-            headers = {
-                # "Access-Control-Request-Method": "POST",
-                # "Host": f"{self._stove_ip}",
-                # "User-Agent": (
-                #     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                #     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                #     "Chrome/130.0.0.0 Safari/537.36 Edg/130.0.0.0"
-                # ),
-                # "Accept": "application/json, text/javascript, */*; q=0.01",
-                # "Accept-Encoding": "gzip, deflate",
-                # "Content-Type": "application/json; charset=utf-8",
-                # "X-Requested-With": "XMLHttpRequest",
-                # "Origin": f"http://{self._stove_ip}",
-                # "Referer": f"http://{self._stove_ip}/management.html",
-                "Content-Type": "application/json; charset=utf-8",
-                "X-Requested-With": "XMLHttpRequest",
-                "Accept": "application/json, text/javascript, */*; q=0.01",
-            }
-            LOGGER.debug("Posting to %s, data=%s", url, data)
-            try:
-                async with session.post(url, data=data, headers=headers) as response:
-                    try:
-                        if response.status != HTTPStatus.OK:
-                            msg = f"Error accessing {url} - {response.status}"
-                            raise WinetAPIConnectionError(msg)
-                        try:
-                            json_data = await response.json(content_type=None)
-                            if json_data["result"] is not True:
-                                LOGGER.debug("Received: %s", json_data)
+        """
+        Set a register value on the Winet device.
 
-                        except JSONDecodeError:
-                            msg = f"Error decoding JSON: [{response.text}]"
-                            raise WinetAPIJsonDecodeError(msg) from None
-                    except ConnectionError as exc:
-                        msg = f"Host not found Connection Error accessing {url}"
-                        raise WinetAPIConnectionError(msg, exc) from None
-            except (
-                ServerDisconnectedError,
-                ClientConnectorError,
-                ClientOSError,
-                ConnectionError,
-                UnboundLocalError,
-            ) as exc:
-                msg = f"Connection failed {url}"
-                raise WinetAPIConnectionError(msg, exc) from None
+        Args:
+            registerid: Register ID to set
+            value: Value to set
+            key: Device key (default: "002")
+            memory: Memory location (default: 1)
+
+        Raises:
+            WinetAPIConnectionError: On connection or HTTP errors
+            WinetAPIJsonDecodeError: On JSON decode errors
+
+        """
+        data = {
+            "key": key,
+            "memory": str(memory),
+            "regId": str(registerid.value),
+            "value": str(value),
+        }
+
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+        }
+
+        request = self._request_builder.build_post_request(
+            "/ajax/set-register",
+            data=data,
+            headers=headers,
+        )
+
+        try:
+            response = await self._request_executor.execute(request)
+
+            if isinstance(response, dict) and response.get("result") is not True:
+                LOGGER.debug("Received: %s", response)
+
+        except WinetAPIJsonDecodeError:
+            msg = f"Error decoding JSON response from {request.url}"
+            LOGGER.exception("%s", msg)
+            raise

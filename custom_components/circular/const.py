@@ -10,7 +10,7 @@ from homeassistant.const import (
 NAME = "Circular Integration"
 DOMAIN = "circular"
 DOMAIN_DATA = f"{DOMAIN}_data"
-VERSION = "1.2.1"
+VERSION = "1.3.0"
 ISSUE_URL = "https://github.com/GUILEB/integration_circular/issues"
 
 LOGGER = logging.getLogger(__package__)

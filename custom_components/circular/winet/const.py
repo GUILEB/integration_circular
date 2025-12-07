@@ -60,7 +60,7 @@ class WinetRegister(Enum):
 class WinetRegisterKey(Enum):
     """'key' parameter for get-registers url."""
 
-    SUBSCRIBE = "019"
+    UPDATE_HARDWARE = "019"
     POLL_DATA = "020"
     CHANGE_STATUS = "022"
 
@@ -68,7 +68,6 @@ class WinetRegisterKey(Enum):
 class WinetRegisterCategory(Enum):
     """'category' parameter for get-registers url."""
 
-    NONE = -1
     POLL_CATEGORY_2 = 2
     POLL_CATEGORY_4 = 4
     POLL_CATEGORY_6 = 6
