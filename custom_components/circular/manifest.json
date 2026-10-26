@@ -7,7 +7,6 @@
   "issue_tracker": "https://github.com/GUILEB/integration_circular/issues",
   "requirements": [
     "aiohttp",
-    "asyncio",
     "pydantic"
   ],
   "codeowners": [
