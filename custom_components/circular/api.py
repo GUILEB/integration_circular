@@ -2,19 +2,8 @@
 
 import asyncio
 from enum import Enum
-from threading import Lock
 
 import aiohttp
-
-from custom_components.circular.winet.const import (
-    WinetProductModel,
-    WinetRegister,
-    WinetRegisterCategory,
-    WinetRegisterKey,
-)
-from custom_components.circular.winet.exceptions import WinetAPIError
-from custom_components.circular.winet.model import WinetGetRegisterResult
-from custom_components.circular.winet.winet import WinetAPILocal
 
 from .const import (
     ECO_DRIVE_MAX_CYCLES,
@@ -28,6 +17,15 @@ from .const import (
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
 )
+from .winet.const import (
+    WinetProductModel,
+    WinetRegister,
+    WinetRegisterCategory,
+    WinetRegisterKey,
+)
+from .winet.exceptions import WinetAPIError
+from .winet.model import WinetGetRegisterResult
+from .winet.winet import WinetAPILocal
 
 
 def clamp(value: float, valuemin: float, valuemax: float) -> float | int:
@@ -61,21 +59,21 @@ class CircularDeviceStatus(Enum):
             "UNKNOWN_1": "Unknown",
             "STABLE_FLAME": "Stable Flame",
             "WORK": "Working",
-            "BRAZIER_CLEANING": "Brazzier cleaning",
+            "BRAZIER_CLEANING": "Brazier cleaning",
             "FINAL_CLEANING": "Final cleaning",
             "ECO_STOP": "Eco_Stop",
             "ALARM": "Alarm",
             "MODULA": "Modula",
             "UNKNOWN": "Unknown",
         }
-        return messages.get(self.name, f"Unknown status{self.name}")
+        return messages.get(self.name, f"Unknown status {self.name}")
 
 
 class CircularDeviceAlarm(Enum):
     """Winet alarm bytes."""
 
     NO_ALARM = 0
-    BLAKC_OUT = 1
+    BLACK_OUT = 1
     SMOKE_PROBE_FAILURE = 2
     SMOKE_OVERTEMPERATURE = 3
     EXTRACTOR_MALFUNCTION = 4
@@ -112,12 +110,6 @@ class CircularApiData:
     def __init__(self, host: str) -> None:
         """Init unset data."""
         self._rawdata = WinetGetRegisterResult()
-        self._data_lock = Lock()  # Thread-safe lock for data updates
-        self._changed_fields: set[str] = set()  # Track changed fields
-
-        # Metadata for update tracking
-        self._last_update_timestamp: dict[str, float] = {}
-        self._update_pending: dict[str, bool] = {}
         self.signal = self._rawdata.signal
         self.name = self._rawdata.name
         self.alr = self._rawdata.alr
@@ -134,13 +126,6 @@ class CircularApiData:
         self.temperature_ask_by_external_entity = 0.0
         self.auto_regulated_temperature = False
 
-    def get_changed_fields(self) -> set[str]:
-        """Get the set of fields that have changed since last check."""
-        with self._data_lock:
-            fields = self._changed_fields.copy()
-            self._changed_fields.clear()
-        return fields
-
     def _merge_params_efficiently(self, new_params: list[list[int]]) -> list[list[int]]:
         """Merge new parameters with existing ones efficiently."""
         # Build a dict from existing params for O(1) lookups
@@ -148,7 +133,9 @@ class CircularApiData:
         # Update with new values
         for key, value in new_params:
             if key in params_dict and params_dict[key] != value:
-                LOGGER.debug(f"Register {key} changed: {params_dict[key]} → {value}")
+                LOGGER.debug(
+                    "Register %s changed: %s → %s", key, params_dict[key], value
+                )
             params_dict[key] = value
 
         # Convert back to list format
@@ -159,53 +146,42 @@ class CircularApiData:
         newdata: WinetGetRegisterResult,
         category: WinetRegisterCategory | None = None,
     ) -> None:
-        """Update or add data to rawdata with thread-safety and conflict detection."""
-        with self._data_lock:
+        """Update or add data to rawdata."""
+        try:
+            # Merge parameters efficiently
+            merged_params = self._merge_params_efficiently(newdata.params)
+
+            # Update raw data
+            self._rawdata.params = merged_params
+            self._rawdata.cat = newdata.cat
+            self._rawdata.signal = newdata.signal
+            self._rawdata.alr = newdata.alr
+            self._rawdata.authlevel = newdata.authlevel
+            self._rawdata.model = newdata.model
+            self._rawdata.name = newdata.name
+
+            # Update public properties
+            self.signal = newdata.signal
+            self.alr = newdata.alr
+            self.name = newdata.name
+            self.model = WinetProductModel(newdata.model)
+
+            # Decode specific categories
+            if category == WinetRegisterCategory.POLL_CATEGORY_2:
+                self._update_cat2_data()
+            elif category == WinetRegisterCategory.POLL_CATEGORY_6:
+                self._update_cat6_data()
+
+            # Decode status only if register exists in data
             try:
-                # Merge parameters efficiently
-                merged_params = self._merge_params_efficiently(newdata.params)
+                self._decode_status()
+            except WinetAPIError:
+                # Status register not available in this update
+                pass
 
-                # Update raw data
-                self._rawdata.params = merged_params
-                self._rawdata.cat = newdata.cat
-                self._rawdata.signal = newdata.signal
-                self._rawdata.alr = newdata.alr
-                self._rawdata.authlevel = newdata.authlevel
-                self._rawdata.model = newdata.model
-                self._rawdata.name = newdata.name
-
-                # Update public properties
-                self.signal = newdata.signal
-                self.alr = newdata.alr
-                self.name = newdata.name
-                self.model = WinetProductModel(newdata.model)
-
-                # Decode specific categories with change tracking
-                if category == WinetRegisterCategory.POLL_CATEGORY_2:
-                    self._update_cat2_data()
-                    self._changed_fields.update(
-                        ["temperature_read", "temperature_set", "power_set", "status"]
-                    )
-
-                elif category == WinetRegisterCategory.POLL_CATEGORY_6:
-                    self._update_cat6_data()
-                    self._changed_fields.update(["alarms", "fan_speed"])
-
-                elif category == WinetRegisterCategory.POLL_CATEGORY_4:
-                    self._changed_fields.add("fan_configuration")
-
-                # Decode status only if register exists in data
-                try:
-                    self._decode_status()
-                    if "status" not in self._changed_fields:
-                        self._changed_fields.add("status")
-                except WinetAPIError:
-                    # Status register not available in this update
-                    pass
-
-            except WinetAPIError as e:
-                LOGGER.error(f"Error updating data: {e}")
-                raise
+        except WinetAPIError as e:
+            LOGGER.error("Error updating data: %s", e)
+            raise
 
     def _update_cat2_data(self) -> None:
         """Update all temperature-related data atomically."""
@@ -369,7 +345,7 @@ class CircularApiClient:
         self._winetclient = WinetAPILocal(session, host)
         self._count_delta_ecomode_asked = 0
         self._eco_mode_cycles = 0
-        self._update_lock = Lock()  # Prevent concurrent update_data calls
+        self._update_lock = asyncio.Lock()  # Prevent concurrent update_data calls
         self._delta_ecomode = 0
 
     @property
@@ -406,7 +382,7 @@ class CircularApiClient:
         value = clamp(
             float(value), float(MIN_THERMOSTAT_TEMP), float(MAX_THERMOSTAT_TEMP)
         )
-        LOGGER.warning(f"Set winet temperature to {value}")
+        LOGGER.debug("Set winet temperature to %s", value)
         await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
 
     async def start_eco_mode_heating(self) -> None:
@@ -503,9 +479,10 @@ class CircularApiClient:
     async def update_data(self) -> None:
         """Update data from the Winet module locally with proper conflict handling."""
         # Prevent concurrent update_data calls
-        if not self._update_lock.acquire(blocking=False):
+        if self._update_lock.locked():
             LOGGER.warning("Update already in progress, skipping duplicate request")
             return
+        await self._update_lock.acquire()
 
         try:
             LOGGER.debug("Updating data from Winet module")
@@ -555,15 +532,11 @@ class CircularApiClient:
                             newdata=result,
                             category=update_config.get("category"),
                         )
-                        changed_fields = self._data.get_changed_fields()
-                        if changed_fields:
-                            LOGGER.debug(
-                                f"Update '{update_config['name']}' changed fields: "
-                                f"{changed_fields}"
-                            )
                 except Exception as e:  # noqa: BLE001
                     LOGGER.error(
-                        f"Error updating '{update_config['name']}': {e}",
+                        "Error updating '%s': %s",
+                        update_config["name"],
+                        e,
                         exc_info=True,
                     )
                     continue

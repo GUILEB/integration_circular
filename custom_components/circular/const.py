@@ -9,17 +9,10 @@ from homeassistant.const import (
 # Base component constants
 NAME = "Circular Integration"
 DOMAIN = "circular"
-DOMAIN_DATA = f"{DOMAIN}_data"
 VERSION = "1.3.0"
 ISSUE_URL = "https://github.com/GUILEB/integration_circular/issues"
 
 LOGGER = logging.getLogger(__package__)
-
-# Icons
-ICON = "mdi:fire"
-
-# Device classes
-BINARY_SENSOR_DEVICE_CLASS = "connectivity"
 
 # Platforms
 PLATFORMS = [
@@ -31,22 +24,17 @@ PLATFORMS = [
 ]
 
 # Configuration and options
-CONF_ENABLED = "enabled"
 CONF_HOST = "host"
-CONF_NAME = "name"
 CONF_ENTITY = "entity"
-CONF_UPDATE_INTERVAL = "update_interval"
 
 UPDATE_INTERVAL = 5
-# Délai maximum pour un cycle complet de mise à jour (plusieurs requêtes + tentatives)
+# Délai maximum d'un cycle de mise à jour (plusieurs requêtes et tentatives)
 UPDATE_TIMEOUT = 30
 # Nombre de cycles de mise à jour avant d'abandonner une demande de mode éco (5 min)
 ECO_DRIVE_MAX_CYCLES = 60
 # Defaults
-DEFAULT_NAME = DOMAIN
 DEFAULT_THERMOSTAT_TEMP = 21
 DEFAULT_DELTA_ECOMODE_TEMP = 2
-DEFAULT_DELTA_ECOMODE_TIME = 60
 
 MIN_DELTA_ECOMODE_TEMP = 0
 MAX_DELTA_ECOMODE_TEMP = 5
