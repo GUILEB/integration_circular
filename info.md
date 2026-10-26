@@ -7,60 +7,48 @@
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 
-This component enable the control of Ravlleli Pellet Stoves by Home Assistant.
+Cette intégration permet de piloter les poêles à granulés Ravelli Circular depuis Home Assistant.
 
-Tested with the Ravlleli Circular 8 pellet stove (not tested on others stoves but should work if the stove uses a Winet Control wifi module)
+Testée avec le poêle Ravelli Circular 8 (elle devrait fonctionner avec d'autres poêles équipés d'un module wifi Winet Control).
 
-**This component will set up the following platforms.**
+**Plateformes créées :**
 
-Platform | Description
+Plateforme | Description
 -- | --
-`binary_sensor` | Show something `True` or `False`.
-`sensor` | Show info from API.
-`switch` | Switch something `True` or `False`.
+`binary_sensor` | Indicateurs à vrai ou faux (par exemple l'état d'alarme).
+`sensor` | Mesures et états du poêle.
+`switch` | Commandes marche/arrêt et modes de régulation.
+`number` | Réglage de la puissance et du delta éco.
+`climate` | Contrôle en mode thermostat.
 
 ![logo][logoimg]
 
 {% if not installed %}
 ## Installation
 
-1. Click install.
-1. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Blueprint".
+1. Cliquer sur installer.
+2. Redémarrer Home Assistant.
+3. Dans l'interface, aller dans « Paramètres » → « Appareils et services », cliquer sur « + Ajouter une intégration » et chercher « Ravelli ».
 
 {% endif %}
 
 
-## Configuration is done in the UI
+## Configuration
 
-<!---->
+La configuration se fait dans l'interface Home Assistant, avec l'adresse IP du module Winet du poêle.
 
 ***
 
-[integration_circular]: https://github.com/GUILEB/integration_circular
-[buymecoffee]: https://www.buymeacoffee.com/drzoid
-[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-<!-- [commits-shield]: https://img.shields.io/github/commit-activity/y/docteurzoidberg/ha-invicta.svg?style=for-the-badge -->
+[releases-shield]: https://img.shields.io/github/v/release/GUILEB/integration_circular
+[releases]: https://github.com/GUILEB/integration_circular/releases
+[commits-shield]: https://img.shields.io/github/check-runs/GUILEB/integration_circular/fe39dd96b270fd23de742a0112f131b8058ec259
 [commits]: https://github.com/GUILEB/integration_circular/commits/master
+[license-shield]: https://img.shields.io/github/license/GUILEB/integration_circular
+[license]: https://github.com/GUILEB/integration_circular/blob/master/LICENSE
 [hacs]: https://github.com/custom-components/hacs
 [hacsbadge]: https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge
-[logoimg]: logo_invicta.png
-[license]: https://github.com/GUILEB/integration_circular/blob/master/LICENSE
-<!-- [license-shield]: https://img.shields.io/github/license/docteurzoidberg/ha-invicta.svg?style=for-the-badge -->
-<!-- [maintenance-shield]: https://img.shields.io/badge/maintainer-DrZoid-blue.svg?style=for-the-badge -->
-<!--[releases-shield]: https://img.shields.io/github/release/docteurzoidberg/ha-invicta.svg?style=for-the-badge -->
-[releases]: https://github.com/GUILEB/integration_circular/releases
+[maintenance-shield]: https://img.shields.io/badge/maintainer-GUILEB-blue.svg?style=for-the-badge
 [user_profile]: https://github.com/GUILEB/
-
-## TODOList
-
-- [] Probleme de mise à jour des données (retro)
-- [] Récuperer des valeurs par defaut
-- [] Ajouter Cicular au Log system
-- [] Implementer les TU
-- [] Mise à jour Documentation
-- [] Ajouter les informations de status (Page Wifi)
-- [] Mise à jour auto de la version du Manifest
-- [] Factoriser le gestion des appels http
-
-
-
+[buymecoffee]: https://buymeacoffee.com/guillaumelk
+[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
+[logoimg]: logo.png

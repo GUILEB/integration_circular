@@ -8,69 +8,101 @@
 
 [![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
-This component enable the control of Ravelli Circular Pellet Stoves by Home Assistant.
+Cette intégration permet de piloter les poêles à granulés **Ravelli Circular** depuis Home Assistant, en local, via le module wifi **Winet Control** du poêle.
 
-Tested with the Ravelli Circular 8 pellet stove (not tested on others stoves but should work if the stove uses a Winet Control wifi module)
+Testée avec le poêle Ravelli Circular 8. Elle devrait fonctionner avec d'autres poêles équipés d'un module Winet Control, mais ce n'est pas vérifié.
 
-_Integration to integrate with [integration_blueprint][integration_blueprint] and [integration_invicta][integration_invicta]._
+**Plateformes créées :**
 
-**This component will set up the following platforms.**
-
-Platform | Description
+Plateforme | Description
 -- | --
-`binary_sensor` | Show something `True` or `False`.
-`sensor` | Show info from blueprint API.
-`switch` | Switch something `True` or `False`.
+`binary_sensor` | Indicateurs à vrai ou faux (par exemple l'état d'alarme).
+`sensor` | Mesures et états du poêle (températures, statut).
+`switch` | Marche/arrêt du poêle et modes de régulation (régulation par sonde externe, mode éco).
+`number` | Réglage de la puissance et du delta du mode éco.
+`climate` | Contrôle en mode thermostat.
 
 ![logo][logoimg]
 
-## Installation by HACS
+## Prérequis
 
-TODO
+- Home Assistant 2024.9.0 ou plus récent.
+- Le poêle doit être joignable en réseau local depuis Home Assistant. Il faut connaître son adresse IP.
 
-## Installation (Manual)
+## Installation par HACS
 
-1. Using the tool of choice open the directory (folder) for your HA configuration (where you find `configuration.yaml`).
-2. If you do not have a `custom_components` directory (folder) there, you need to create it.
-3. In the `custom_components` directory (folder) create a new folder called `integration_circular`.
-4. Download _all_ the files from the `custom_components/integration_circular/` directory (folder) in this repository.
-5. Place the files you downloaded in the new directory (folder) you created.
-6. Restart Home Assistant
-7. In the HA UI go to "Configuration" -> "Integrations" click "+" and search for "Integration circular"
+1. Dans HACS, ouvrir le menu « ⋮ » puis « Dépôts personnalisés ».
+2. Ajouter `https://github.com/GUILEB/integration_circular` avec la catégorie **Intégration**.
+3. Installer « Ravelli Circular » depuis HACS, puis redémarrer Home Assistant.
 
-Using your HA configuration directory (folder) as a starting point you should now also have this:
+## Installation manuelle
+
+1. Ouvrir le dossier de configuration de Home Assistant (celui qui contient `configuration.yaml`).
+2. Créer le dossier `custom_components` s'il n'existe pas.
+3. Dans `custom_components`, créer un dossier nommé **`circular`**. Le nom doit être exactement `circular`, car c'est le domaine de l'intégration.
+4. Copier **tous** les fichiers du dossier `custom_components/circular/` de ce dépôt dans ce nouveau dossier.
+5. Redémarrer Home Assistant.
+
+Le dossier doit ressembler à ceci :
 
 ```text
-custom_components/integration_circular/translations/en.json
-custom_components/integration_circular/translations/nb.json
-custom_components/integration_circulartranslations/sensor.nb.json
-custom_components/integration_circular/__init__.py
-custom_components/integration_circular/api.py
-custom_components/integration_circular/binary_sensor.py
-custom_components/integration_circular/config_flow.py
-custom_components/integration_circular/const.py
-custom_components/integration_circular/manifest.json
-custom_components/integration_circular/sensor.py
-custom_components/integration_circular/switch.py
+custom_components/circular/__init__.py
+custom_components/circular/api.py
+custom_components/circular/binary_sensor.py
+custom_components/circular/climate.py
+custom_components/circular/config_flow.py
+custom_components/circular/const.py
+custom_components/circular/coordinator.py
+custom_components/circular/entity.py
+custom_components/circular/manifest.json
+custom_components/circular/number.py
+custom_components/circular/sensor.py
+custom_components/circular/switch.py
+custom_components/circular/translations/en.json
+custom_components/circular/translations/fr.json
+custom_components/circular/winet/
 ```
 
-## Configuration is done in the UI
+## Configuration
 
-<!---->
+La configuration se fait dans l'interface Home Assistant :
 
-## Contributions are welcome!
+1. Aller dans « Paramètres » → « Appareils et services ».
+2. Cliquer sur « + Ajouter une intégration » et chercher **Ravelli**.
+3. Renseigner l'adresse IP du module Winet du poêle.
+4. Optionnel : choisir un capteur de température. Sa valeur est alors envoyée au poêle en régulation par sonde externe.
 
-If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
+## Registres utilisés
+
+L'intégration communique avec le module Winet par HTTP local. Les registres connus sont décrits dans `custom_components/circular/winet/const.py`.
+
+Registre | Rôle
+-- | --
+2 | Statut du poêle
+3 | Alarmes
+6 | Température de la sonde
+50 | Consigne de température
+51 | Puissance
+187 | Vitesse du ventilateur d'air ambiant
+
+Les autres registres sont encore inconnus. Certains sont lus sans être décodés.
+
+## Limites connues
+
+- Pas d'authentification : l'intégration parle au module Winet en HTTP sur le réseau local.
+- Un seul poêle par entrée de configuration. Deux poêles du même modèle ne peuvent pas être ajoutés, car l'identifiant unique est basé sur le modèle.
+- Le capteur `error_offline` indique un état d'alarme du poêle. Ce n'est pas une mesure de la connexion au module.
+
+## Contribuer
+
+Les contributions sont bienvenues. Lire d'abord le [guide de contribution](CONTRIBUTING.md).
 
 ***
 [logoimg]: logo.png
 
-[integration_blueprint]: https://github.com/ludeeus/integration_blueprint
-[integration_invicta]: https://github.com/docteurzoidberg/ha-invicta
-
 [releases-shield]: https://img.shields.io/github/v/release/GUILEB/integration_circular
 
-[releases]: (https://github.com/GUILEB/integration_circular/releases)
+[releases]: https://github.com/GUILEB/integration_circular/releases
 
 [issues-shield]: https://img.shields.io/github/issues/GUILEB/integration_circular
 
@@ -89,5 +121,3 @@ If you want to contribute to this please read the [Contribution guidelines](CONT
 
 [buymecoffee]: https://buymeacoffee.com/guillaumelk
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-
-
