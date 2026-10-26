@@ -17,6 +17,7 @@ from custom_components.circular.winet.model import WinetGetRegisterResult
 from custom_components.circular.winet.winet import WinetAPILocal
 
 from .const import (
+    ECO_DRIVE_MAX_CYCLES,
     LOGGER,
     MAX_DELTA_ECOMODE_TEMP,
     MAX_FAN_SPEED,
@@ -367,6 +368,7 @@ class CircularApiClient:
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
         self._count_delta_ecomode_asked = 0
+        self._eco_mode_cycles = 0
         self._update_lock = Lock()  # Prevent concurrent update_data calls
         self._delta_ecomode = 0
 
@@ -410,13 +412,25 @@ class CircularApiClient:
     async def start_eco_mode_heating(self) -> None:
         """Start stove in ecoMode State."""
         # Force le démarrage du poele dans le mode EcoMode
+        if self._count_delta_ecomode_asked == 0:
+            self._eco_mode_cycles = 0
         self._count_delta_ecomode_asked = self._count_delta_ecomode_asked + 1
         LOGGER.debug(f"ECODRIVE - Count asked : {self._count_delta_ecomode_asked}")
+
+    def _reset_eco_mode(self) -> None:
+        """Annule la demande de mode éco en cours."""
+        self._count_delta_ecomode_asked = 0
+        self._eco_mode_cycles = 0
 
     async def eco_mode_drive(self) -> None:
         """Gestion de l'activation du poele à partir de l'état initiale EcoMode ."""
         # Demande de Chauffe avec un poele en EcoMode
         if self.data.eco_mode_drive_activated and self._count_delta_ecomode_asked > 0:
+            self._eco_mode_cycles += 1
+            if self._eco_mode_cycles > ECO_DRIVE_MAX_CYCLES:
+                LOGGER.warning("ECODRIVE - Délai dépassé, demande abandonnée")
+                self._reset_eco_mode()
+                return
             temp_value = self.data.temperature_set
             # Demande de Demarrage à partir de Eco Mode : Activation Read + EcoDelta
             if self.data.is_ecomode_stop and self._count_delta_ecomode_asked == 1:
@@ -431,7 +445,7 @@ class CircularApiClient:
                 # Poele en WORK : Fin de l'activation de l'EcoMode
                 # Application de la consigne demandée
                 LOGGER.info("ECODRIVE - Start Completed")
-                self._count_delta_ecomode_asked = 0
+                self._reset_eco_mode()
                 await self.set_temperature(temp_value)
 
     async def turn_on(self) -> None:
@@ -457,6 +471,7 @@ class CircularApiClient:
         """Turn off Eco Drive Mode."""
         LOGGER.debug("Regulated Temperature - off")
         self.data.eco_mode_drive_activated = False
+        self._reset_eco_mode()
 
     async def auto_regulated_temperature_on(self) -> None:
         """Turn on automatic temperature regulation for the stove."""
@@ -470,17 +485,20 @@ class CircularApiClient:
 
     async def set_temperature_ask_by_external_entity(self, value: float) -> None:
         """Set temperature ask by external entity."""
+        # Le poêle n'accepte que des consignes entières : on compare des entiers
+        target = round(value)
         if (
             self.data.auto_regulated_temperature
             and self.data.is_heating
-            and value != self.data.temperature_set
+            and target != self.data.temperature_set
+            and target != self.data.temperature_ask_by_external_entity
         ):
-            LOGGER.warning(
+            LOGGER.debug(
                 f"Regulated Temperature : winet Temp. {self.data.temperature_set} °C"
                 f" vs External Temp. {value} °C"
             )
-            await self.set_temperature(value)
-            self.data.temperature_ask_by_external_entity = value
+            await self.set_temperature(target)
+            self.data.temperature_ask_by_external_entity = target
 
     async def update_data(self) -> None:
         """Update data from the Winet module locally with proper conflict handling."""

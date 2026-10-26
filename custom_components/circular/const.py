@@ -38,6 +38,10 @@ CONF_ENTITY = "entity"
 CONF_UPDATE_INTERVAL = "update_interval"
 
 UPDATE_INTERVAL = 5
+# Délai maximum pour un cycle complet de mise à jour (plusieurs requêtes + tentatives)
+UPDATE_TIMEOUT = 30
+# Nombre de cycles de mise à jour avant d'abandonner une demande de mode éco (5 min)
+ECO_DRIVE_MAX_CYCLES = 60
 # Defaults
 DEFAULT_NAME = DOMAIN
 DEFAULT_THERMOSTAT_TEMP = 21
