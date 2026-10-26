@@ -5,7 +5,7 @@ import logging
 import aiohttp
 
 from .const import WinetRegister, WinetRegisterCategory, WinetRegisterKey
-from .exceptions import WinetAPIJsonDecodeError
+from .exceptions import WinetAPIError, WinetAPIJsonDecodeError
 from .HTTPRequestExecutor import HTTPRequestBuilder, HTTPRequestExecutor
 from .model import WinetGetRegisterResult
 
@@ -155,8 +155,11 @@ class WinetAPILocal:
         try:
             response = await self._request_executor.execute(request)
 
-            if isinstance(response, dict) and response.get("result") is not True:
-                LOGGER.debug("Received: %s", response)
+            # Le module répond result=false quand il refuse l'écriture
+            if isinstance(response, dict) and response.get("result") is False:
+                msg = f"Écriture du registre {registerid.value} refusée par le module"
+                LOGGER.warning("%s : %s", msg, response)
+                raise WinetAPIError(msg)
 
         except WinetAPIJsonDecodeError:
             msg = f"Error decoding JSON response from {request.url}"

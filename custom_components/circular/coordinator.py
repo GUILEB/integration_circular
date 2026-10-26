@@ -10,7 +10,7 @@ from homeassistant.helpers.update_coordinator import (
 )
 
 from .api import CircularApiClient, CircularApiData
-from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
+from .const import DOMAIN, LOGGER, UPDATE_INTERVAL, UPDATE_TIMEOUT
 from .winet.exceptions import WinetAPIError
 
 from homeassistant.core import HomeAssistant
@@ -38,7 +38,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
 
     async def _async_update_data(self) -> CircularApiData:
         try:
-            async with asyncio.timeout(UPDATE_INTERVAL):
+            async with asyncio.timeout(UPDATE_TIMEOUT):
                 await self._api.update_data()
 
             if self.entity_id:
@@ -59,6 +59,9 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
                             self.entity_id,
                             entity_value,
                         )
+                    except WinetAPIError as err:
+                        # Une écriture refusée ne rend pas le poêle indisponible
+                        LOGGER.warning("External temperature not applied: %s", err)
 
             return self._api.data
         except WinetAPIError as err:
