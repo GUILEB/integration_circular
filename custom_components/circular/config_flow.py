@@ -10,6 +10,7 @@ from homeassistant.helpers import selector
 
 from .api import CircularApiClient
 from .const import CONF_ENTITY, CONF_HOST, DOMAIN, LOGGER
+from .winet.exceptions import WinetAPIError
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
@@ -53,7 +54,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             host = user_input[CONF_HOST]
-            entity = user_input[CONF_ENTITY]
+            entity = user_input.get(CONF_ENTITY)
 
             try:
                 self._async_abort_entries_match({CONF_HOST: host})
@@ -68,7 +69,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data={CONF_HOST: host, CONF_ENTITY: entity},
                 )
 
-            except (ConnectionError, ClientConnectionError):
+            except (
+                ConnectionError,
+                ClientConnectionError,
+                WinetAPIError,
+                TimeoutError,
+            ):
                 errors["base"] = "cannot_connect"
             except Exception:  # pylint: disable=broad-except
                 LOGGER.exception("Unexpected exception")

@@ -256,17 +256,21 @@ class CircularApiData:
     def _decode_status(self) -> None:
         """Decode status register."""
         status = self._get_register_value(WinetRegister.STATUS)
-        self.status = CircularDeviceStatus(status)
+        try:
+            self.status = CircularDeviceStatus(status)
+        except ValueError:
+            LOGGER.warning("Unknown stove status code: %s", status)
+            self.status = CircularDeviceStatus.UNKNOWN
 
     def _decode_alarms(self) -> None:
         """Decode alarm register byte into individual alarms."""
         alarmsbyte = self._get_register_value(WinetRegister.ALARMS_BITS)
         LOGGER.debug(f"Alarm byte value is {alarmsbyte}")
-        if alarmsbyte < 0:
-            LOGGER.error("Cannot decode alarms")
-            return
         self.alarms.clear()
-        self.alarms.append(CircularDeviceAlarm(alarmsbyte))
+        try:
+            self.alarms.append(CircularDeviceAlarm(alarmsbyte))
+        except ValueError:
+            LOGGER.warning("Unknown alarm code: %s", alarmsbyte)
 
     def _decode_temperature_read(self) -> None:
         """Update Temperature read register."""
@@ -305,11 +309,12 @@ class CircularApiData:
 
     @property
     def error_offline(self) -> bool:
-        """Is offline ?."""
-        return self.status in [
-            CircularDeviceStatus.ALARM,
-        ]
-        return self.status == CircularDeviceStatus.UNKNOWN
+        """Is the stove in alarm state ?.
+
+        Note: ce n'est pas la connexion au module Winet. La perte de connexion
+        est signalée par le coordinateur (entités indisponibles).
+        """
+        return self.status == CircularDeviceStatus.ALARM
 
     @property
     def alarm_extractor_malfunction(self) -> bool:
@@ -516,6 +521,7 @@ class CircularApiClient:
             ]
 
             # Execute updates in order
+            successes = 0
             for update_config in updates:
                 if not update_config["enabled"]:
                     continue
@@ -526,6 +532,7 @@ class CircularApiClient:
                         update_config.get("category"),
                     )
                     if result is not None:
+                        successes += 1  # le module a répondu
                         self._data.update(
                             newdata=result,
                             category=update_config.get("category"),
@@ -545,6 +552,11 @@ class CircularApiClient:
 
                 # Add delay between updates
                 await asyncio.sleep(0.5)
+
+            # Aucune requête n'a abouti : le poêle est injoignable
+            if successes == 0:
+                msg = "Aucune réponse du module Winet"
+                raise WinetAPIError(msg)
 
             # EcoMode Drive handling
             await self.eco_mode_drive()

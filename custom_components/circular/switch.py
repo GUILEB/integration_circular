@@ -79,7 +79,10 @@ class CircularSwitch(CircularEntity, RestoreEntity, SwitchEntity):
     async def async_added_to_hass(self) -> None:
         """Restore initial state on startup."""
         # Restore the last known state from Home Assistant BEFORE calling super()
-        if self.entity_description.key == "Auto_regulated_temperature_by_external":
+        if (
+            self.entity_description.key
+            == "Auto_regulated_temperature_by_external_on_off"
+        ):
             last_state = await self.async_get_last_state()
             LOGGER.debug(
                 "Restoring state for %s: last_state=%s",
@@ -94,10 +97,10 @@ class CircularSwitch(CircularEntity, RestoreEntity, SwitchEntity):
                     self._attr_name,
                     "ON" if target_state else "OFF",
                 )
-                # if target_state:
-                #     await self.entity_description.on_fn(control_api)
-                # else:
-                #     await self.entity_description.off_fn(control_api)
+                if target_state:
+                    await self.entity_description.on_fn(control_api)
+                else:
+                    await self.entity_description.off_fn(control_api)
 
         # Call super() AFTER restoration to avoid override
         await super().async_added_to_hass()

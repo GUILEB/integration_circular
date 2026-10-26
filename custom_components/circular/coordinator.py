@@ -1,15 +1,17 @@
 """The Circular integration."""
 
+import asyncio
 from datetime import timedelta
 
-import async_timeout
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-
-from custom_components.circular.winet.exceptions import HAASAPIPollingError
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
 from .api import CircularApiClient, CircularApiData
 from .const import DOMAIN, LOGGER, UPDATE_INTERVAL
+from .winet.exceptions import WinetAPIError
 
 from homeassistant.core import HomeAssistant
 
@@ -36,7 +38,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
 
     async def _async_update_data(self) -> CircularApiData:
         try:
-            async with async_timeout.timeout(UPDATE_INTERVAL):
+            async with asyncio.timeout(UPDATE_INTERVAL):
                 await self._api.update_data()
 
             if self.entity_id:
@@ -59,8 +61,11 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
                         )
 
             return self._api.data
-        except HAASAPIPollingError as err:
-            raise err from err
+        except WinetAPIError as err:
+            # Signale l'indisponibilité du poêle aux entités de Home Assistant
+            raise UpdateFailed(f"Poêle injoignable : {err}") from err
+        except TimeoutError as err:
+            raise UpdateFailed("Délai dépassé lors de la mise à jour") from err
 
     @property
     def read_api(self) -> CircularApiClient:
@@ -79,7 +84,7 @@ class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
             manufacturer="Ravelli",
             model="Circular 8",
             name=self.read_api.data.name,
-            identifiers={("Circular", f"{self.read_api.data.model}]")},
+            identifiers={("Circular", f"{self.read_api.data.model}")},
             sw_version="1.0",
             configuration_url=f"http://{self._api._host}/",
         )
