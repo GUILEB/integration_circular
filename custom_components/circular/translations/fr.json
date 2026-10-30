@@ -35,5 +35,92 @@
             "reconfigure_successful": "Configuration mise à jour.",
             "wrong_device": "Cette adresse correspond à un autre poêle."
         }
+    },
+    "entity": {
+        "binary_sensor": {
+            "on_off": {
+                "name": "En marche"
+            },
+            "heating": {
+                "name": "Chauffe"
+            },
+            "ecostop": {
+                "name": "Eco Stop"
+            },
+            "error_offline": {
+                "name": "Erreur hors ligne"
+            },
+            "alarm_extractor_malfunction": {
+                "name": "Alarme extracteur"
+            },
+            "alarm_failed_ignition": {
+                "name": "Alarme échec d'allumage"
+            },
+            "alarm_no_pellets": {
+                "name": "Alarme plus de pellets"
+            },
+            "alarm_open_pellet_compartment": {
+                "name": "Alarme réservoir ouvert"
+            },
+            "alarm_thermal_safety": {
+                "name": "Alarme sécurité thermique"
+            },
+            "alarm_smoke_overtemp": {
+                "name": "Alarme surchauffe fumées"
+            },
+            "alarm_smoke_probe_failure": {
+                "name": "Alarme sonde fumées"
+            }
+        },
+        "sensor": {
+            "power_set": {
+                "name": "Puissance"
+            },
+            "temperature_set": {
+                "name": "Consigne"
+            },
+            "temperature_read": {
+                "name": "Température lue"
+            },
+            "status": {
+                "name": "Statut"
+            },
+            "alarms": {
+                "name": "Alarmes"
+            },
+            "name": {
+                "name": "Nom"
+            },
+            "host": {
+                "name": "Adresse"
+            },
+            "wifi_signal": {
+                "name": "Signal Wi-Fi"
+            },
+            "product_model": {
+                "name": "Modèle"
+            }
+        },
+        "switch": {
+            "on_off": {
+                "name": "Marche"
+            },
+            "stop_deviation": {
+                "name": "Mode Stop Déviation"
+            }
+        },
+        "number": {
+            "power": {
+                "name": "Réglage de puissance"
+            },
+            "delta_eco": {
+                "name": "Delta mode Eco"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Thermostat"
+            }
+        }
     }
 }

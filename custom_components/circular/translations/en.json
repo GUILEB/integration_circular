@@ -35,5 +35,92 @@
             "reconfigure_successful": "Configuration updated.",
             "wrong_device": "This address belongs to another stove."
         }
+    },
+    "entity": {
+        "binary_sensor": {
+            "on_off": {
+                "name": "Power on"
+            },
+            "heating": {
+                "name": "Heating"
+            },
+            "ecostop": {
+                "name": "Eco stop"
+            },
+            "error_offline": {
+                "name": "Offline Error"
+            },
+            "alarm_extractor_malfunction": {
+                "name": "Extractor malfunction Alarm"
+            },
+            "alarm_failed_ignition": {
+                "name": "Failed ignition Alarm"
+            },
+            "alarm_no_pellets": {
+                "name": "No pellets Alarm"
+            },
+            "alarm_open_pellet_compartment": {
+                "name": "Open pellet compartment Alarm"
+            },
+            "alarm_thermal_safety": {
+                "name": "Thermal safety Alarm"
+            },
+            "alarm_smoke_overtemp": {
+                "name": "Smoke over temperature Alarm"
+            },
+            "alarm_smoke_probe_failure": {
+                "name": "Smoke probe failure Alarm"
+            }
+        },
+        "sensor": {
+            "power_set": {
+                "name": "Power"
+            },
+            "temperature_set": {
+                "name": "Set Temperature"
+            },
+            "temperature_read": {
+                "name": "Read Temperature"
+            },
+            "status": {
+                "name": "Status"
+            },
+            "alarms": {
+                "name": "Alarms"
+            },
+            "name": {
+                "name": "Name"
+            },
+            "host": {
+                "name": "Host"
+            },
+            "wifi_signal": {
+                "name": "Wifi Signal Strength"
+            },
+            "product_model": {
+                "name": "Product model"
+            }
+        },
+        "switch": {
+            "on_off": {
+                "name": "Turn On"
+            },
+            "stop_deviation": {
+                "name": "Stop Déviation Mode"
+            }
+        },
+        "number": {
+            "power": {
+                "name": "Power Control"
+            },
+            "delta_eco": {
+                "name": "Delta ECO mode Control"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Thermostat"
+            }
+        }
     }
 }

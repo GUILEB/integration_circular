@@ -8,12 +8,10 @@ from homeassistant.components.number import (
     NumberMode,
     RestoreNumber,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    DOMAIN,
     LOGGER,
     MAX_DELTA_ECOMODE_TEMP,
     MAX_POWER,
@@ -21,20 +19,21 @@ from .const import (
     MIN_POWER,
     DEFAULT_DELTA_ECOMODE_TEMP,
 )
-from .coordinator import CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry, CircularDataUpdateCoordinator
 from .entity import CircularEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: CircularConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up power."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
 
     descriptionpower = NumberEntityDescription(
         key="power",
+        translation_key="power",
         name="Power Control",
         icon="mdi:arrow-expand-vertical",
     )
@@ -49,6 +48,7 @@ async def async_setup_entry(
 
     descriptiondelta = NumberEntityDescription(
         key="delta eco mode",
+        translation_key="delta_eco",
         name="Delta ECO mode Control",
         icon="mdi:arrow-expand-vertical",
     )
@@ -86,7 +86,7 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
         value_to_send: int = int(value)
         LOGGER.debug(
             "%s set power to %d with raw value %s",
-            self._attr_name,
+            self.entity_id,
             value,
             value_to_send,
         )
@@ -130,7 +130,7 @@ class EcoDeltaControlEntity(CircularEntity, RestoreNumber):
         value_to_send: int = int(value)
         LOGGER.debug(
             "%s set delta eco_mode to %d with raw value %s",
-            self._attr_name,
+            self.entity_id,
             value,
             value_to_send,
         )

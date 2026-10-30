@@ -5,14 +5,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .api import CircularApiClient, CircularApiData
-from .const import DOMAIN, LOGGER
-from .coordinator import CircularDataUpdateCoordinator
+from .const import LOGGER
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 
@@ -35,6 +34,7 @@ class CircularSwitchEntityDescription(
 CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
     CircularSwitchEntityDescription(
         key="on_off",
+        translation_key="on_off",
         name="Turn On",
         on_fn=lambda control_api: control_api.turn_on(),
         off_fn=lambda control_api: control_api.turn_off(),
@@ -42,6 +42,7 @@ CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
     ),
     CircularSwitchEntityDescription(
         key="Auto_regulated_temperature_by_external_on_off",
+        translation_key="stop_deviation",
         name="Stop Déviation Mode",
         on_fn=lambda control_api: control_api.auto_regulated_temperature_on(),
         off_fn=lambda control_api: control_api.auto_regulated_temperature_off(),
@@ -52,11 +53,11 @@ CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: CircularConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Configure switch entities."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
 
     async_add_entities(
         CircularSwitch(coordinator=coordinator, description=description)
@@ -79,7 +80,7 @@ class CircularSwitch(CircularEntity, RestoreEntity, SwitchEntity):
             last_state = await self.async_get_last_state()
             LOGGER.debug(
                 "Restoring state for %s: last_state=%s",
-                self._attr_name,
+                self.entity_id,
                 last_state,
             )
             if last_state is not None and last_state.state in ("on", "off"):
@@ -87,7 +88,7 @@ class CircularSwitch(CircularEntity, RestoreEntity, SwitchEntity):
                 control_api = self.coordinator.control_api
                 LOGGER.info(
                     "Applying restored state for %s: %s",
-                    self._attr_name,
+                    self.entity_id,
                     "ON" if target_state else "OFF",
                 )
                 if target_state:

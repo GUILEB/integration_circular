@@ -16,7 +16,6 @@ from homeassistant.components.climate.const import (
     HVACAction,
     HVACMode,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -24,18 +23,19 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .api import CircularDeviceStatus
 from .const import (
     DEFAULT_THERMOSTAT_TEMP,
-    DOMAIN,
     LOGGER,
     MAX_POWER,
     MAX_THERMOSTAT_TEMP,
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
 )
-from .coordinator import CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry, CircularDataUpdateCoordinator
 from .entity import CircularEntity
 
 CIRCULAR_CLIMATES: tuple[ClimateEntityDescription, ...] = (
-    ClimateEntityDescription(key="climate", name="Thermostat"),
+    ClimateEntityDescription(
+        key="climate", name="Thermostat", translation_key="thermostat"
+    ),
 )
 
 # Statuts pour lesquels le poêle n'est pas en mode chauffage
@@ -62,11 +62,11 @@ POWER_PRESETS = [str(power) for power in range(MIN_POWER, MAX_POWER + 1)]
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: CircularConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Climate entity setup."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities(
         CircularClimate(
             coordinator=coordinator,

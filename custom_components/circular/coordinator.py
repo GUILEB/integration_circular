@@ -3,6 +3,7 @@
 import asyncio
 from datetime import timedelta
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
@@ -14,6 +15,9 @@ from .const import DOMAIN, LOGGER, UPDATE_INTERVAL, UPDATE_TIMEOUT
 from .winet.exceptions import WinetAPIError
 
 from homeassistant.core import HomeAssistant
+
+
+type CircularConfigEntry = ConfigEntry["CircularDataUpdateCoordinator"]
 
 
 class CircularDataUpdateCoordinator(DataUpdateCoordinator[CircularApiData]):
