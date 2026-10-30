@@ -147,6 +147,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
 
         else:
             await self.coordinator.control_api.turn_on()
+        await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""
@@ -158,6 +159,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
             (raw_target_temp * 9 / 5) + 32,
         )
         await self.coordinator.control_api.set_temperature(raw_target_temp)
+        await self.coordinator.async_request_refresh()
 
     @property
     def current_temperature(self) -> float:
@@ -195,6 +197,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
         await self.coordinator.control_api.set_fan_speed(
             self.fan_mode_register[fan_mode]
         )
+        await self.coordinator.async_request_refresh()
 
     @property
     def preset_mode(self) -> str | None:
@@ -206,3 +209,4 @@ class CircularClimate(CircularEntity, ClimateEntity):
         """Set the power level (1 to 5)."""
         LOGGER.debug("Setting power to %s", preset_mode)
         await self.coordinator.control_api.set_power(int(preset_mode))
+        await self.coordinator.async_request_refresh()
