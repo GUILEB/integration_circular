@@ -1,19 +1,25 @@
 {
     "config": {
         "step": {
-            "manual_device_entry": {
-                "title": "Stove's IP Address",
+            "user": {
+                "title": "Ravelli stove (Winet Control)",
                 "description": "If you need help with the configuration have a look here: https://github.com/GUILEB/integration_circular",
                 "data": {
-                    "host": "IP Address"
+                    "host": "Winet module IP address",
+                    "entity": "External temperature sensor (optional)"
+                },
+                "data_description": {
+                    "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
+                    "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
                 }
             }
         },
         "error": {
-            "auth": "Username/Password is wrong."
+            "cannot_connect": "Unable to reach the Winet module. Check the IP address and that the stove is powered.",
+            "unknown": "Unexpected error, check the Home Assistant log."
         },
         "abort": {
-            "single_instance_allowed": "Only a single instance is allowed."
+            "already_configured": "This stove is already configured."
         }
     }
 }

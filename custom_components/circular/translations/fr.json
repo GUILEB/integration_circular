@@ -1,19 +1,25 @@
 {
     "config": {
         "step": {
-            "manual_device_entry": {
-                "title": "IP du poele",
-                "description": "If you need help with the configuration have a look here: https://github.com/GUILEB/integration_circular",
+            "user": {
+                "title": "Poêle Ravelli (Winet Control)",
+                "description": "Besoin d'aide pour la configuration ? Consultez https://github.com/GUILEB/integration_circular",
                 "data": {
-                    "host": "Adresse IP"
+                    "host": "Adresse IP du module Winet",
+                    "entity": "Capteur de température externe (optionnel)"
+                },
+                "data_description": {
+                    "host": "Adresse IP locale du module Winet du poêle, par exemple 192.168.1.23.",
+                    "entity": "Capteur utilisé par le mode « Stop Déviation » pour corriger la consigne du poêle."
                 }
             }
         },
         "error": {
-            "auth": "Username/Password is wrong."
+            "cannot_connect": "Impossible de joindre le module Winet. Vérifiez l'adresse IP et que le poêle est sous tension.",
+            "unknown": "Erreur inattendue, consultez le journal de Home Assistant."
         },
         "abort": {
-            "single_instance_allowed": "Only a single instance is allowed."
+            "already_configured": "Ce poêle est déjà configuré."
         }
     }
 }
