@@ -7,6 +7,7 @@ from enum import Enum
 import aiohttp
 
 from .const import (
+    DEFAULT_DELTA_ECOMODE_TEMP,
     DEFAULT_NAME,
     ECO_DRIVE_MAX_CYCLES,
     LOGGER,
@@ -359,10 +360,12 @@ class CircularApiClient:
         self._session = session
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
-        self._count_delta_ecomode_asked = 0
         self._eco_mode_cycles = 0
+        # Relance depuis Eco Stop : consigne d'origine et consigne relevée
+        self._eco_restore_temp: float | None = None
+        self._eco_raised_temp: int | None = None
         self._update_lock = asyncio.Lock()  # Prevent concurrent update_data calls
-        self._delta_ecomode = 0
+        self._delta_ecomode = DEFAULT_DELTA_ECOMODE_TEMP
         # Bascule marche/arrêt en attente : statut au moment de l'envoi
         self._status_change_from: CircularDeviceStatus | None = None
         self._status_change_at = 0.0
@@ -405,43 +408,48 @@ class CircularApiClient:
         await self._winetclient.set_register(WinetRegister.TEMPERATURE_SET, int(value))
 
     async def start_eco_mode_heating(self) -> None:
-        """Start stove in ecoMode State."""
-        # Force le démarrage du poele dans le mode EcoMode
-        if self._count_delta_ecomode_asked == 0:
-            self._eco_mode_cycles = 0
-        self._count_delta_ecomode_asked = self._count_delta_ecomode_asked + 1
-        LOGGER.debug(f"ECODRIVE - Count asked : {self._count_delta_ecomode_asked}")
-
-    def _reset_eco_mode(self) -> None:
-        """Annule la demande de mode éco en cours."""
-        self._count_delta_ecomode_asked = 0
+        """Restart the stove from Eco Stop by raising its target temperature."""
+        if self._eco_restore_temp is not None or not self.data.is_ecomode_stop:
+            return
+        # Le poêle ne repart que si sa consigne dépasse la température lue
+        raised = int(
+            clamp(
+                self.data.temperature_read + self._delta_ecomode,
+                MIN_THERMOSTAT_TEMP,
+                MAX_THERMOSTAT_TEMP,
+            )
+        )
+        if raised <= self.data.temperature_set:
+            LOGGER.debug("ECODRIVE - Target already high enough, no raise")
+            return
+        LOGGER.info("ECODRIVE - Start Begin")
+        self._eco_restore_temp = self.data.temperature_set
+        self._eco_raised_temp = raised
         self._eco_mode_cycles = 0
+        await self.set_temperature(raised)
+
+    async def _end_eco_mode(self) -> None:
+        """Put back the original target temperature after an Eco Stop restart."""
+        restore_temp = self._eco_restore_temp
+        raised_temp = self._eco_raised_temp
+        self._eco_restore_temp = None
+        self._eco_raised_temp = None
+        self._eco_mode_cycles = 0
+        # Une consigne modifiée entre-temps (utilisateur, VTherm) est conservée
+        if restore_temp is not None and self.data.temperature_set == raised_temp:
+            await self.set_temperature(restore_temp)
 
     async def eco_mode_drive(self) -> None:
-        """Gestion de l'activation du poele à partir de l'état initiale EcoMode ."""
-        # Demande de Chauffe avec un poele en EcoMode
-        if self.data.eco_mode_drive_activated and self._count_delta_ecomode_asked > 0:
-            self._eco_mode_cycles += 1
-            if self._eco_mode_cycles > ECO_DRIVE_MAX_CYCLES:
-                LOGGER.warning("ECODRIVE - Délai dépassé, demande abandonnée")
-                self._reset_eco_mode()
-                return
-            temp_value = self.data.temperature_set
-            # Demande de Demarrage à partir de Eco Mode : Activation Read + EcoDelta
-            if self.data.is_ecomode_stop and self._count_delta_ecomode_asked == 1:
-                temp_diff = self.data.temperature_set - self.data.temperature_read
-                # Si la différence n'est pas assez grande => force le demarrage
-                if temp_diff <= self._delta_ecomode:
-                    LOGGER.info("ECODRIVE - Start Begin")
-                    temp_value = self.data.temperature_read + self._delta_ecomode
-                    await self.set_temperature(temp_value)
-
-            elif self.data.is_heating and self._count_delta_ecomode_asked > 0:
-                # Poele en WORK : Fin de l'activation de l'EcoMode
-                # Application de la consigne demandée
-                LOGGER.info("ECODRIVE - Start Completed")
-                self._reset_eco_mode()
-                await self.set_temperature(temp_value)
+        """Follow an Eco Stop restart until the stove works again."""
+        if self._eco_restore_temp is None:
+            return
+        self._eco_mode_cycles += 1
+        if self.data.is_heating:
+            LOGGER.info("ECODRIVE - Start Completed")
+            await self._end_eco_mode()
+        elif self._eco_mode_cycles > ECO_DRIVE_MAX_CYCLES:
+            LOGGER.warning("ECODRIVE - Délai dépassé, demande abandonnée")
+            await self._end_eco_mode()
 
     def _status_change_pending(self) -> bool:
         """Is a previous on/off toggle still waiting for the stove status ?."""
@@ -475,6 +483,7 @@ class CircularApiClient:
 
     async def turn_off(self) -> None:
         """Turn off the stove."""
+        await self._end_eco_mode()
         if self.data.status == CircularDeviceStatus.OFF or self.data.is_shutting_down:
             return
         if self._status_change_pending():
@@ -492,7 +501,7 @@ class CircularApiClient:
         """Turn off Eco Drive Mode."""
         LOGGER.debug("Regulated Temperature - off")
         self.data.eco_mode_drive_activated = False
-        self._reset_eco_mode()
+        await self._end_eco_mode()
 
     async def auto_regulated_temperature_on(self) -> None:
         """Turn on automatic temperature regulation for the stove."""
