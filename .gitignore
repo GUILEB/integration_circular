@@ -219,6 +219,9 @@ ozw_log.txt
 
 # Development files
 custom_components/versatile_thermostat
+custom_components/hacs
+custom_components/vtherm_pellet_stove
+config/www/community
 
 #config/*
 #!config/configuration.yaml
