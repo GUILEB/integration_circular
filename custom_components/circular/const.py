@@ -27,11 +27,13 @@ PLATFORMS = [
 CONF_HOST = "host"
 CONF_ENTITY = "entity"
 
-UPDATE_INTERVAL = 5
+UPDATE_INTERVAL = 15
+# Intervalle entre deux lectures du nom, du modèle et du signal (secondes)
+HARDWARE_UPDATE_INTERVAL = 300
 # Délai maximum d'un cycle de mise à jour (plusieurs requêtes et tentatives)
 UPDATE_TIMEOUT = 30
-# Nombre de cycles de mise à jour avant d'abandonner une demande de mode éco (5 min)
-ECO_DRIVE_MAX_CYCLES = 60
+# Délai avant d'abandonner une relance depuis Eco Stop (secondes)
+ECO_DRIVE_TIMEOUT = 300
 # Délai pendant lequel une nouvelle bascule marche/arrêt est refusée (secondes)
 STATUS_CHANGE_TIMEOUT = 60
 # Defaults

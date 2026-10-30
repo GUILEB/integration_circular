@@ -9,7 +9,8 @@ import aiohttp
 from .const import (
     DEFAULT_DELTA_ECOMODE_TEMP,
     DEFAULT_NAME,
-    ECO_DRIVE_MAX_CYCLES,
+    ECO_DRIVE_TIMEOUT,
+    HARDWARE_UPDATE_INTERVAL,
     LOGGER,
     MAX_DELTA_ECOMODE_TEMP,
     MAX_FAN_SPEED,
@@ -359,7 +360,7 @@ class CircularApiClient:
         self._session = session
         self._data = CircularApiData(host)
         self._winetclient = WinetAPILocal(session, host)
-        self._eco_mode_cycles = 0
+        self._eco_started_at = 0.0
         # Relance depuis Eco Stop : consigne d'origine et consigne relevée
         self._eco_restore_temp: float | None = None
         self._eco_raised_temp: int | None = None
@@ -368,6 +369,7 @@ class CircularApiClient:
         # Bascule marche/arrêt en attente : statut au moment de l'envoi
         self._status_change_from: CircularDeviceStatus | None = None
         self._status_change_at = 0.0
+        self._hardware_updated_at: float | None = None
 
     @property
     def data(self) -> CircularApiData:
@@ -424,7 +426,7 @@ class CircularApiClient:
         LOGGER.info("ECODRIVE - Start Begin")
         self._eco_restore_temp = self.data.temperature_set
         self._eco_raised_temp = raised
-        self._eco_mode_cycles = 0
+        self._eco_started_at = time.monotonic()
         await self.set_temperature(raised)
 
     async def _end_eco_mode(self) -> None:
@@ -433,7 +435,6 @@ class CircularApiClient:
         raised_temp = self._eco_raised_temp
         self._eco_restore_temp = None
         self._eco_raised_temp = None
-        self._eco_mode_cycles = 0
         # Une consigne modifiée entre-temps (utilisateur, VTherm) est conservée
         if restore_temp is not None and self.data.temperature_set == raised_temp:
             await self.set_temperature(restore_temp)
@@ -442,11 +443,10 @@ class CircularApiClient:
         """Follow an Eco Stop restart until the stove works again."""
         if self._eco_restore_temp is None:
             return
-        self._eco_mode_cycles += 1
         if self.data.is_heating:
             LOGGER.info("ECODRIVE - Start Completed")
             await self._end_eco_mode()
-        elif self._eco_mode_cycles > ECO_DRIVE_MAX_CYCLES:
+        elif time.monotonic() - self._eco_started_at > ECO_DRIVE_TIMEOUT:
             LOGGER.warning("ECODRIVE - Délai dépassé, demande abandonnée")
             await self._end_eco_mode()
 
@@ -518,6 +518,14 @@ class CircularApiClient:
             await self.set_temperature(target)
             self.data.temperature_ask_by_external_entity = target
 
+    def _hardware_update_due(self) -> bool:
+        """Is it time to read the name, model and signal again ?."""
+        # Ces informations changent rarement : inutile de les lire à chaque cycle
+        return (
+            self._hardware_updated_at is None
+            or time.monotonic() - self._hardware_updated_at > HARDWARE_UPDATE_INTERVAL
+        )
+
     async def update_data(self) -> None:
         """Update data from the Winet module locally with proper conflict handling."""
         # Prevent concurrent update_data calls
@@ -533,7 +541,7 @@ class CircularApiClient:
             updates = [
                 {
                     "name": "hardware",
-                    "enabled": True,
+                    "enabled": self._hardware_update_due(),
                     "key": WinetRegisterKey.UPDATE_HARDWARE,
                     "category": None,
                 },
@@ -570,6 +578,8 @@ class CircularApiClient:
                     )
                     if result is not None:
                         successes += 1  # le module a répondu
+                        if update_config["name"] == "hardware":
+                            self._hardware_updated_at = time.monotonic()
                         self._data.update(
                             newdata=result,
                             category=update_config.get("category"),
