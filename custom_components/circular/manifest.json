@@ -6,7 +6,6 @@
   "documentation": "https://github.com/GUILEB/integration_circular/blob/master/README.md",
   "issue_tracker": "https://github.com/GUILEB/integration_circular/issues",
   "requirements": [
-    "aiohttp",
     "pydantic"
   ],
   "codeowners": [
