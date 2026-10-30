@@ -153,11 +153,7 @@ class CircularClimate(CircularEntity, ClimateEntity):
         """Turn on thermostat by setting a target temperature."""
         raw_target_temp = kwargs[ATTR_TEMPERATURE]
         self.last_temp = raw_target_temp
-        LOGGER.warning(
-            "Setting target temp to %sc %sf",
-            int(raw_target_temp),
-            (raw_target_temp * 9 / 5) + 32,
-        )
+        LOGGER.debug("Setting target temp to %s", raw_target_temp)
         await self.coordinator.control_api.set_temperature(raw_target_temp)
         await self.coordinator.async_request_refresh()
 

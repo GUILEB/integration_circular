@@ -530,7 +530,7 @@ class CircularApiClient:
         """Update data from the Winet module locally with proper conflict handling."""
         # Prevent concurrent update_data calls
         if self._update_lock.locked():
-            LOGGER.warning("Update already in progress, skipping duplicate request")
+            LOGGER.debug("Update already in progress, skipping duplicate request")
             return
         await self._update_lock.acquire()
 
@@ -585,12 +585,9 @@ class CircularApiClient:
                             category=update_config.get("category"),
                         )
                 except Exception as e:  # noqa: BLE001
-                    LOGGER.error(
-                        "Error updating '%s': %s",
-                        update_config["name"],
-                        e,
-                        exc_info=True,
-                    )
+                    # L'indisponibilité est signalée par le coordinateur
+                    LOGGER.warning("Error updating '%s': %s", update_config["name"], e)
+                    LOGGER.debug("Error details", exc_info=True)
                     continue
 
                 # Add delay between updates
