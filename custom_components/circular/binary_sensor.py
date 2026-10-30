@@ -8,14 +8,12 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularApiData
-from .const import DOMAIN
-from .coordinator import CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 
@@ -36,24 +34,28 @@ class CircularBinarySensorEntityDescription(
 CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     CircularBinarySensorEntityDescription(
         key="on_off",
+        translation_key="on_off",
         name="Power on",
         icon="mdi:power",
         value_fn=lambda data: data.is_on,
     ),
     CircularBinarySensorEntityDescription(
         key="heating",
+        translation_key="heating",
         name="Heating",
         icon="mdi:fire",
         value_fn=lambda data: data.is_heating,
     ),
     CircularBinarySensorEntityDescription(
         key="ecostop",
+        translation_key="ecostop",
         name="Eco stop",
         icon="mdi:leaf",
         value_fn=lambda data: data.is_ecomode_stop,
     ),
     CircularBinarySensorEntityDescription(
         key="error_offline",
+        translation_key="error_offline",
         name="Offline Error",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.error_offline,
@@ -61,6 +63,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_extractor_malfunction",
+        translation_key="alarm_extractor_malfunction",
         name="Extractor malfunction Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_extractor_malfunction,
@@ -68,6 +71,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_failed_ignition",
+        translation_key="alarm_failed_ignition",
         name="Failed ignition Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_failed_ignition,
@@ -75,6 +79,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_no_pellets",
+        translation_key="alarm_no_pellets",
         name="No pellets Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_no_pellets,
@@ -82,6 +87,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_open_pellet_compartment",
+        translation_key="alarm_open_pellet_compartment",
         name="Open pellet compartment Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_open_pellet_compartment,
@@ -89,6 +95,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_thermal_safety",
+        translation_key="alarm_thermal_safety",
         name="Thermal safety Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_thermal_safety,
@@ -96,6 +103,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_smoke_overtemp",
+        translation_key="alarm_smoke_overtemp",
         name="Smoke over temperature Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_smoke_overtemp,
@@ -103,6 +111,7 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
     ),
     CircularBinarySensorEntityDescription(
         key="alarm_smoke_probe_failure",
+        translation_key="alarm_smoke_probe_failure",
         name="Smoke probe failure Alarm",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.alarm_smoke_probe_failure,
@@ -113,11 +122,11 @@ CIRCULAR_BINARY_SENSORS: tuple[CircularBinarySensorEntityDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: CircularConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up a Circular On/Off Sensor."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
 
     async_add_entities(
         CircularBinarySensor(coordinator=coordinator, description=description)

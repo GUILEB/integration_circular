@@ -85,3 +85,41 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
             data_schema=STEP_USER_DATA_SCHEMA,
         )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the stove IP address or the external temperature sensor."""
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            host = user_input[CONF_HOST]
+            try:
+                productmodel = await validate_host_input(host)
+            except (
+                ConnectionError,
+                ClientConnectionError,
+                WinetAPIError,
+                TimeoutError,
+            ):
+                errors["base"] = "cannot_connect"
+            except Exception:  # pylint: disable=broad-except
+                LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                # La nouvelle adresse doit désigner le même poêle
+                await self.async_set_unique_id(productmodel)
+                self._abort_if_unique_id_mismatch(reason="wrong_device")
+                return self.async_update_reload_and_abort(
+                    entry,
+                    title=f"{productmodel} ({host})",
+                    data={CONF_HOST: host, CONF_ENTITY: user_input.get(CONF_ENTITY)},
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            errors=errors,
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_USER_DATA_SCHEMA, user_input or entry.data
+            ),
+        )

@@ -10,14 +10,12 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularApiData
-from .const import DOMAIN
-from .coordinator import CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 
@@ -39,6 +37,7 @@ class CircularSensorEntityDescription(
 Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     CircularSensorEntityDescription(
         key="power_set",
+        translation_key="power_set",
         icon="mdi:fire-circle",
         name="Power",
         state_class=SensorStateClass.MEASUREMENT,
@@ -46,6 +45,7 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     ),
     CircularSensorEntityDescription(
         key="temperature_set",
+        translation_key="temperature_set",
         name="Set Temperature",
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -54,6 +54,7 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     ),
     CircularSensorEntityDescription(
         key="temperature_read",
+        translation_key="temperature_read",
         name="Read Temperature",
         state_class=SensorStateClass.MEASUREMENT,
         device_class=SensorDeviceClass.TEMPERATURE,
@@ -62,16 +63,19 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     ),
     CircularSensorEntityDescription(
         key="status",
+        translation_key="status",
         name="Status",
         value_fn=lambda data: data.status.get_message(),
     ),
     CircularSensorEntityDescription(
         key="alarms",
+        translation_key="alarms",
         name="Alarms",
         value_fn=lambda data: data.alr,
     ),
     CircularSensorEntityDescription(
         key="name",
+        translation_key="name",
         name="Name",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.name,
@@ -79,6 +83,7 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     ),
     CircularSensorEntityDescription(
         key="host",
+        translation_key="host",
         name="Host",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.host,
@@ -86,12 +91,14 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
     ),
     CircularSensorEntityDescription(
         key="wifi_signal",
+        translation_key="wifi_signal",
         name="Wifi Signal Strength",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.signal,
     ),
     CircularSensorEntityDescription(
         key="product_model",
+        translation_key="product_model",
         name="Product model",
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.model.get_message(),
@@ -101,10 +108,12 @@ Circular_SENSORS: tuple[CircularSensorEntityDescription, ...] = (
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant,
+    entry: CircularConfigEntry,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Define setup entry call."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities(
         CircularSensor(coordinator=coordinator, description=description)
         for description in Circular_SENSORS

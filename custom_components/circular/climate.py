@@ -13,36 +13,59 @@ from homeassistant.components.climate.const import (
     FAN_MEDIUM,
     FAN_OFF,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularDeviceStatus
 from .const import (
-    DEFAULT_THERMOSTAT_TEMP,
-    DOMAIN,
     LOGGER,
+    MAX_POWER,
     MAX_THERMOSTAT_TEMP,
+    MIN_POWER,
     MIN_THERMOSTAT_TEMP,
 )
-from .coordinator import CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 CIRCULAR_CLIMATES: tuple[ClimateEntityDescription, ...] = (
-    ClimateEntityDescription(key="climate", name="Thermostat"),
+    ClimateEntityDescription(
+        key="climate", name="Thermostat", translation_key="thermostat"
+    ),
 )
+
+# Statuts pour lesquels le poêle n'est pas en mode chauffage
+HVAC_OFF_STATUSES = (
+    CircularDeviceStatus.OFF,
+    CircularDeviceStatus.FINAL_CLEANING,
+    CircularDeviceStatus.ALARM,
+    CircularDeviceStatus.UNKNOWN,
+)
+
+HVAC_ACTIONS = {
+    CircularDeviceStatus.WAIT_FOR_FLAME: HVACAction.PREHEATING,
+    CircularDeviceStatus.POWER_ON: HVACAction.PREHEATING,
+    CircularDeviceStatus.STABLE_FLAME: HVACAction.PREHEATING,
+    CircularDeviceStatus.WORK: HVACAction.HEATING,
+    CircularDeviceStatus.MODULA: HVACAction.HEATING,
+    CircularDeviceStatus.BRAZIER_CLEANING: HVACAction.HEATING,
+    CircularDeviceStatus.ECO_STOP: HVACAction.IDLE,
+}
+
+# Niveaux de puissance exposés en preset ("1" à "5")
+POWER_PRESETS = [str(power) for power in range(MIN_POWER, MAX_POWER + 1)]
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: CircularConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Climate entity setup."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
     async_add_entities(
         CircularClimate(
             coordinator=coordinator,
@@ -57,7 +80,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
 
     entity_description: ClimateEntityDescription
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    attr_fan_mode = FAN_AUTO
     _attr_fan_modes = [
         FAN_OFF,
         FAN_LOW,
@@ -65,19 +87,19 @@ class CircularClimate(CircularEntity, ClimateEntity):
         FAN_HIGH,
         FAN_AUTO,
     ]
+    _attr_preset_modes = POWER_PRESETS
     _attr_min_temp = MIN_THERMOSTAT_TEMP
     _attr_max_temp = MAX_THERMOSTAT_TEMP
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
         | ClimateEntityFeature.FAN_MODE
+        | ClimateEntityFeature.PRESET_MODE
         | ClimateEntityFeature.TURN_ON
         | ClimateEntityFeature.TURN_OFF
     )
 
     _attr_target_temperature_step = 1
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-
-    last_temp = DEFAULT_THERMOSTAT_TEMP
 
     fan_mode_register = {
         FAN_OFF: 0,
@@ -87,57 +109,39 @@ class CircularClimate(CircularEntity, ClimateEntity):
         FAN_AUTO: 6,
     }
 
-    def __init__(
-        self,
-        coordinator: CircularDataUpdateCoordinator,
-        description: ClimateEntityDescription,
-    ) -> None:
-        """Configure climate entry and override last_temp if the thermostat is currently on."""
-        super().__init__(coordinator, description)
-        self.last_temp = coordinator.data.temperature_set
-
     @property
     def hvac_mode(self) -> str:
         """Return current hvac mode."""
-        status = self.coordinator.read_api.data.status
-        if status not in [
-            CircularDeviceStatus.OFF,
-            CircularDeviceStatus.ALARM,
-            CircularDeviceStatus.UNKNOWN,
-        ]:
-            return HVACMode.HEAT
-        return HVACMode.OFF
+        if self.coordinator.read_api.data.status in HVAC_OFF_STATUSES:
+            return HVACMode.OFF
+        return HVACMode.HEAT
+
+    @property
+    def hvac_action(self) -> HVACAction:
+        """Return the current burner activity."""
+        return HVAC_ACTIONS.get(self.coordinator.read_api.data.status, HVACAction.OFF)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Set HVAC mode to normal or thermostat control."""
-        LOGGER.warning(
-            "Setting hvac mode to [%s] - last temp: %s", hvac_mode, self.last_temp
-        )
+        """Turn the stove on (heat) or off."""
+        LOGGER.debug("Setting hvac mode to [%s]", hvac_mode)
 
-        # Changement d'état Chauffage à OFF
         if hvac_mode == HVACMode.OFF:
-            temp_c = min(
-                self.coordinator.read_api.data.temperature_read, self.last_temp
-            )
-            await self.coordinator.control_api.set_temperature(temp_c)
+            await self.coordinator.control_api.turn_off()
 
         # ECO MODE : Demmarrage du poele s'il était arrêté en EcoMode
-        elif (
-            hvac_mode == HVACMode.HEAT
-            and self.coordinator.read_api.data.is_ecomode_stop
-        ):
+        elif self.coordinator.read_api.data.is_ecomode_stop:
             await self.coordinator.control_api.start_eco_mode_heating()
+
+        else:
+            await self.coordinator.control_api.turn_on()
+        await self.coordinator.async_request_refresh()
 
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""
         raw_target_temp = kwargs[ATTR_TEMPERATURE]
-        self.last_temp = raw_target_temp
-        LOGGER.warning(
-            "Setting target temp to %sc %sf",
-            int(raw_target_temp),
-            (raw_target_temp * 9 / 5) + 32,
-        )
+        LOGGER.debug("Setting target temp to %s", raw_target_temp)
         await self.coordinator.control_api.set_temperature(raw_target_temp)
+        await self.coordinator.async_request_refresh()
 
     @property
     def current_temperature(self) -> float:
@@ -149,19 +153,9 @@ class CircularClimate(CircularEntity, ClimateEntity):
         """Return target temperature."""
         return float(self.coordinator.read_api.data.temperature_set)
 
-    @property
-    def turn_on(self) -> None:
-        """Turn the entity on."""
-        LOGGER.debug("Setting turn_on : %s ", self._attr_hvac_mode)
-
     async def async_turn_on(self) -> None:
         """Turn the entity on."""
         await self.async_set_hvac_mode(HVACMode.HEAT)
-
-    @property
-    def turn_off(self) -> None:
-        """Turn the entity off."""
-        LOGGER.debug("Setting turn_off : %s ", self._attr_hvac_mode)
 
     async def async_turn_off(self) -> None:
         """Turn the entity off."""
@@ -185,3 +179,16 @@ class CircularClimate(CircularEntity, ClimateEntity):
         await self.coordinator.control_api.set_fan_speed(
             self.fan_mode_register[fan_mode]
         )
+        await self.coordinator.async_request_refresh()
+
+    @property
+    def preset_mode(self) -> str | None:
+        """Return the current power level."""
+        power = str(self.coordinator.read_api.data.power_set)
+        return power if power in POWER_PRESETS else None
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        """Set the power level (1 to 5)."""
+        LOGGER.debug("Setting power to %s", preset_mode)
+        await self.coordinator.control_api.set_power(int(preset_mode))
+        await self.coordinator.async_request_refresh()

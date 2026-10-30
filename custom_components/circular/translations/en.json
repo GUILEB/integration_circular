@@ -1,19 +1,126 @@
 {
     "config": {
         "step": {
-            "manual_device_entry": {
-                "title": "Stove's IP Address",
+            "user": {
+                "title": "Ravelli stove (Winet Control)",
                 "description": "If you need help with the configuration have a look here: https://github.com/GUILEB/integration_circular",
                 "data": {
-                    "host": "IP Address"
+                    "host": "Winet module IP address",
+                    "entity": "External temperature sensor (optional)"
+                },
+                "data_description": {
+                    "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
+                    "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
+                }
+            },
+            "reconfigure": {
+                "title": "Reconfigure the stove",
+                "description": "Change the Winet module IP address or the external temperature sensor.",
+                "data": {
+                    "host": "Winet module IP address",
+                    "entity": "External temperature sensor (optional)"
+                },
+                "data_description": {
+                    "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
+                    "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
                 }
             }
         },
         "error": {
-            "auth": "Username/Password is wrong."
+            "cannot_connect": "Unable to reach the Winet module. Check the IP address and that the stove is powered.",
+            "unknown": "Unexpected error, check the Home Assistant log."
         },
         "abort": {
-            "single_instance_allowed": "Only a single instance is allowed."
+            "already_configured": "This stove is already configured.",
+            "reconfigure_successful": "Configuration updated.",
+            "wrong_device": "This address belongs to another stove."
+        }
+    },
+    "entity": {
+        "binary_sensor": {
+            "on_off": {
+                "name": "Power on"
+            },
+            "heating": {
+                "name": "Heating"
+            },
+            "ecostop": {
+                "name": "Eco stop"
+            },
+            "error_offline": {
+                "name": "Offline Error"
+            },
+            "alarm_extractor_malfunction": {
+                "name": "Extractor malfunction Alarm"
+            },
+            "alarm_failed_ignition": {
+                "name": "Failed ignition Alarm"
+            },
+            "alarm_no_pellets": {
+                "name": "No pellets Alarm"
+            },
+            "alarm_open_pellet_compartment": {
+                "name": "Open pellet compartment Alarm"
+            },
+            "alarm_thermal_safety": {
+                "name": "Thermal safety Alarm"
+            },
+            "alarm_smoke_overtemp": {
+                "name": "Smoke over temperature Alarm"
+            },
+            "alarm_smoke_probe_failure": {
+                "name": "Smoke probe failure Alarm"
+            }
+        },
+        "sensor": {
+            "power_set": {
+                "name": "Power"
+            },
+            "temperature_set": {
+                "name": "Set Temperature"
+            },
+            "temperature_read": {
+                "name": "Read Temperature"
+            },
+            "status": {
+                "name": "Status"
+            },
+            "alarms": {
+                "name": "Alarms"
+            },
+            "name": {
+                "name": "Name"
+            },
+            "host": {
+                "name": "Host"
+            },
+            "wifi_signal": {
+                "name": "Wifi Signal Strength"
+            },
+            "product_model": {
+                "name": "Product model"
+            }
+        },
+        "switch": {
+            "on_off": {
+                "name": "Turn On"
+            },
+            "stop_deviation": {
+                "name": "Stop Déviation Mode"
+            }
+        },
+        "number": {
+            "power": {
+                "name": "Power Control"
+            },
+            "delta_eco": {
+                "name": "Delta ECO mode Control"
+            }
+        },
+        "climate": {
+            "thermostat": {
+                "name": "Thermostat"
+            }
         }
     }
 }

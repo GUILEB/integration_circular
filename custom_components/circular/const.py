@@ -9,7 +9,7 @@ from homeassistant.const import (
 # Base component constants
 NAME = "Circular Integration"
 DOMAIN = "circular"
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 ISSUE_URL = "https://github.com/GUILEB/integration_circular/issues"
 
 LOGGER = logging.getLogger(__package__)
@@ -27,13 +27,17 @@ PLATFORMS = [
 CONF_HOST = "host"
 CONF_ENTITY = "entity"
 
-UPDATE_INTERVAL = 5
+UPDATE_INTERVAL = 15
+# Intervalle entre deux lectures du nom, du modèle et du signal (secondes)
+HARDWARE_UPDATE_INTERVAL = 300
 # Délai maximum d'un cycle de mise à jour (plusieurs requêtes et tentatives)
 UPDATE_TIMEOUT = 30
-# Nombre de cycles de mise à jour avant d'abandonner une demande de mode éco (5 min)
-ECO_DRIVE_MAX_CYCLES = 60
+# Délai avant d'abandonner une relance depuis Eco Stop (secondes)
+ECO_DRIVE_TIMEOUT = 300
+# Délai pendant lequel une nouvelle bascule marche/arrêt est refusée (secondes)
+STATUS_CHANGE_TIMEOUT = 60
 # Defaults
-DEFAULT_THERMOSTAT_TEMP = 21
+DEFAULT_NAME = "Circular 8"
 DEFAULT_DELTA_ECOMODE_TEMP = 2
 
 MIN_DELTA_ECOMODE_TEMP = 0

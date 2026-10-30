@@ -1,18 +1,15 @@
 """Flame height number sensors."""
 
-from dataclasses import dataclass
-
 from homeassistant.components.number import (
     NumberEntity,
     NumberEntityDescription,
     NumberMode,
+    RestoreNumber,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
-    DOMAIN,
     LOGGER,
     MAX_DELTA_ECOMODE_TEMP,
     MAX_POWER,
@@ -20,20 +17,21 @@ from .const import (
     MIN_POWER,
     DEFAULT_DELTA_ECOMODE_TEMP,
 )
-from .coordinator import CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: CircularConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up power."""
-    coordinator: CircularDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator = entry.runtime_data
 
     descriptionpower = NumberEntityDescription(
         key="power",
+        translation_key="power",
         name="Power Control",
         icon="mdi:arrow-expand-vertical",
     )
@@ -48,6 +46,7 @@ async def async_setup_entry(
 
     descriptiondelta = NumberEntityDescription(
         key="delta eco mode",
+        translation_key="delta_eco",
         name="Delta ECO mode Control",
         icon="mdi:arrow-expand-vertical",
     )
@@ -57,7 +56,6 @@ async def async_setup_entry(
     )
 
 
-@dataclass
 class CircularPowerControlEntity(CircularEntity, NumberEntity):
     """Power control entity."""
 
@@ -65,14 +63,6 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
     _attr_native_min_value: float = MIN_POWER
     _attr_native_step: float = 1
     _attr_mode: NumberMode = NumberMode.SLIDER
-
-    def __init__(
-        self,
-        coordinator: CircularDataUpdateCoordinator,
-        description: NumberEntityDescription,
-    ) -> None:
-        """Initialize Power Sensor."""
-        super().__init__(coordinator, description)
 
     @property
     def native_value(self) -> float | None:
@@ -85,7 +75,7 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
         value_to_send: int = int(value)
         LOGGER.debug(
             "%s set power to %d with raw value %s",
-            self._attr_name,
+            self.entity_id,
             value,
             value_to_send,
         )
@@ -93,8 +83,7 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
         await self.coordinator.async_refresh()
 
 
-@dataclass
-class EcoDeltaControlEntity(CircularEntity, NumberEntity):
+class EcoDeltaControlEntity(CircularEntity, RestoreNumber):
     """Delta Power control entity."""
 
     _attr_native_max_value: int = MAX_DELTA_ECOMODE_TEMP
@@ -103,13 +92,13 @@ class EcoDeltaControlEntity(CircularEntity, NumberEntity):
     _attr_native_step: int = 1
     _attr_mode: NumberMode = NumberMode.BOX
 
-    def __init__(
-        self,
-        coordinator: CircularDataUpdateCoordinator,
-        description: NumberEntityDescription,
-    ) -> None:
-        """Initialize Power Sensor."""
-        super().__init__(coordinator, description)
+    async def async_added_to_hass(self) -> None:
+        """Restore the delta chosen before the last restart."""
+        await super().async_added_to_hass()
+        last_data = await self.async_get_last_number_data()
+        if last_data is not None and last_data.native_value is not None:
+            self._attr_native_value = int(last_data.native_value)
+        await self.coordinator.control_api.set_delta_temp(value=self._attr_native_value)
 
     @property
     def native_value(self) -> float | None:
@@ -121,7 +110,7 @@ class EcoDeltaControlEntity(CircularEntity, NumberEntity):
         value_to_send: int = int(value)
         LOGGER.debug(
             "%s set delta eco_mode to %d with raw value %s",
-            self._attr_name,
+            self.entity_id,
             value,
             value_to_send,
         )
