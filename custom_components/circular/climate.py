@@ -22,14 +22,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .api import CircularDeviceStatus
 from .const import (
-    DEFAULT_THERMOSTAT_TEMP,
     LOGGER,
     MAX_POWER,
     MAX_THERMOSTAT_TEMP,
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
 )
-from .coordinator import CircularConfigEntry, CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 CIRCULAR_CLIMATES: tuple[ClimateEntityDescription, ...] = (
@@ -81,7 +80,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
 
     entity_description: ClimateEntityDescription
     _attr_hvac_modes = [HVACMode.HEAT, HVACMode.OFF]
-    attr_fan_mode = FAN_AUTO
     _attr_fan_modes = [
         FAN_OFF,
         FAN_LOW,
@@ -103,8 +101,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
     _attr_target_temperature_step = 1
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
 
-    last_temp = DEFAULT_THERMOSTAT_TEMP
-
     fan_mode_register = {
         FAN_OFF: 0,
         FAN_LOW: 1,
@@ -112,15 +108,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
         FAN_HIGH: 5,
         FAN_AUTO: 6,
     }
-
-    def __init__(
-        self,
-        coordinator: CircularDataUpdateCoordinator,
-        description: ClimateEntityDescription,
-    ) -> None:
-        """Configure climate entry and override last_temp if the thermostat is currently on."""
-        super().__init__(coordinator, description)
-        self.last_temp = coordinator.data.temperature_set
 
     @property
     def hvac_mode(self) -> str:
@@ -152,7 +139,6 @@ class CircularClimate(CircularEntity, ClimateEntity):
     async def async_set_temperature(self, **kwargs: Any) -> None:
         """Turn on thermostat by setting a target temperature."""
         raw_target_temp = kwargs[ATTR_TEMPERATURE]
-        self.last_temp = raw_target_temp
         LOGGER.debug("Setting target temp to %s", raw_target_temp)
         await self.coordinator.control_api.set_temperature(raw_target_temp)
         await self.coordinator.async_request_refresh()

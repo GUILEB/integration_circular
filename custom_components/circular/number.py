@@ -1,7 +1,5 @@
 """Flame height number sensors."""
 
-from dataclasses import dataclass
-
 from homeassistant.components.number import (
     NumberEntity,
     NumberEntityDescription,
@@ -19,7 +17,7 @@ from .const import (
     MIN_POWER,
     DEFAULT_DELTA_ECOMODE_TEMP,
 )
-from .coordinator import CircularConfigEntry, CircularDataUpdateCoordinator
+from .coordinator import CircularConfigEntry
 from .entity import CircularEntity
 
 
@@ -58,7 +56,6 @@ async def async_setup_entry(
     )
 
 
-@dataclass
 class CircularPowerControlEntity(CircularEntity, NumberEntity):
     """Power control entity."""
 
@@ -66,14 +63,6 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
     _attr_native_min_value: float = MIN_POWER
     _attr_native_step: float = 1
     _attr_mode: NumberMode = NumberMode.SLIDER
-
-    def __init__(
-        self,
-        coordinator: CircularDataUpdateCoordinator,
-        description: NumberEntityDescription,
-    ) -> None:
-        """Initialize Power Sensor."""
-        super().__init__(coordinator, description)
 
     @property
     def native_value(self) -> float | None:
@@ -94,7 +83,6 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
         await self.coordinator.async_refresh()
 
 
-@dataclass
 class EcoDeltaControlEntity(CircularEntity, RestoreNumber):
     """Delta Power control entity."""
 
@@ -103,14 +91,6 @@ class EcoDeltaControlEntity(CircularEntity, RestoreNumber):
     _attr_native_value: int = DEFAULT_DELTA_ECOMODE_TEMP
     _attr_native_step: int = 1
     _attr_mode: NumberMode = NumberMode.BOX
-
-    def __init__(
-        self,
-        coordinator: CircularDataUpdateCoordinator,
-        description: NumberEntityDescription,
-    ) -> None:
-        """Initialize Power Sensor."""
-        super().__init__(coordinator, description)
 
     async def async_added_to_hass(self) -> None:
         """Restore the delta chosen before the last restart."""

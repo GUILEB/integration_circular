@@ -375,8 +375,6 @@ class CircularApiClient:
     @property
     def data(self) -> CircularApiData:
         """Returns decoded data from api raw data."""
-        if self._data.name == "unset":
-            LOGGER.warning("Returning uninitialized data")
         return self._data
 
     async def set_fan_speed(self, value: float) -> None:
