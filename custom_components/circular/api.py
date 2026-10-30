@@ -134,7 +134,6 @@ class CircularApiData:
         self.power_set = 0
         self.fan_speed = 0
         self.delta_ecomode = 0.0
-        self.eco_mode_drive_activated = False
         self.temperature_ask_by_external_entity = 0.0
         self.auto_regulated_temperature = False
 
@@ -491,17 +490,6 @@ class CircularApiClient:
             return
         LOGGER.debug("Turn stove off")
         await self._toggle_status()
-
-    async def eco_mode_drive_on(self) -> None:
-        """Turn on Eco Drive Mode."""
-        LOGGER.debug("Regulated Temperature - on")
-        self.data.eco_mode_drive_activated = True
-
-    async def eco_mode_drive_off(self) -> None:
-        """Turn off Eco Drive Mode."""
-        LOGGER.debug("Regulated Temperature - off")
-        self.data.eco_mode_drive_activated = False
-        await self._end_eco_mode()
 
     async def auto_regulated_temperature_on(self) -> None:
         """Turn on automatic temperature regulation for the stove."""
