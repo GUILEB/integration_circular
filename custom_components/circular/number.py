@@ -6,6 +6,7 @@ from homeassistant.components.number import (
     NumberEntity,
     NumberEntityDescription,
     NumberMode,
+    RestoreNumber,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -94,7 +95,7 @@ class CircularPowerControlEntity(CircularEntity, NumberEntity):
 
 
 @dataclass
-class EcoDeltaControlEntity(CircularEntity, NumberEntity):
+class EcoDeltaControlEntity(CircularEntity, RestoreNumber):
     """Delta Power control entity."""
 
     _attr_native_max_value: int = MAX_DELTA_ECOMODE_TEMP
@@ -110,6 +111,14 @@ class EcoDeltaControlEntity(CircularEntity, NumberEntity):
     ) -> None:
         """Initialize Power Sensor."""
         super().__init__(coordinator, description)
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the delta chosen before the last restart."""
+        await super().async_added_to_hass()
+        last_data = await self.async_get_last_number_data()
+        if last_data is not None and last_data.native_value is not None:
+            self._attr_native_value = int(last_data.native_value)
+        await self.coordinator.control_api.set_delta_temp(value=self._attr_native_value)
 
     @property
     def native_value(self) -> float | None:
