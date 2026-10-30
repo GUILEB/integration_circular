@@ -184,12 +184,9 @@ class CircularApiData:
             elif category == WinetRegisterCategory.POLL_CATEGORY_6:
                 self._update_cat6_data()
 
-            # Decode status only if register exists in data
-            try:
+            # La réponse "matériel" ne contient pas encore le registre de statut
+            if self._has_register(WinetRegister.STATUS):
                 self._decode_status()
-            except WinetAPIError:
-                # Status register not available in this update
-                pass
 
         except WinetAPIError as e:
             LOGGER.error("Error updating data: %s", e)
@@ -231,6 +228,10 @@ class CircularApiData:
             self._decode_fan_speed()
         except WinetAPIError as e:
             LOGGER.warning(f"Failed to update alarm data: {e}")
+
+    def _has_register(self, registerid: WinetRegister) -> bool:
+        """Is the register present in the data received so far ?."""
+        return any(param[0] == registerid.value for param in self._rawdata.params)
 
     def _get_register_value(self, registerid: WinetRegister) -> int:
         """Parse all data (memory banks?) to find a register's value."""
