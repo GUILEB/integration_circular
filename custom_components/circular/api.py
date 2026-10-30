@@ -1,11 +1,13 @@
 """API Client."""
 
 import asyncio
+import time
 from enum import Enum
 
 import aiohttp
 
 from .const import (
+    DEFAULT_NAME,
     ECO_DRIVE_MAX_CYCLES,
     LOGGER,
     MAX_DELTA_ECOMODE_TEMP,
@@ -16,6 +18,7 @@ from .const import (
     MIN_FAN_SPEED,
     MIN_POWER,
     MIN_THERMOSTAT_TEMP,
+    STATUS_CHANGE_TIMEOUT,
 )
 from .winet.const import (
     WinetProductModel,
@@ -31,6 +34,14 @@ from .winet.winet import WinetAPILocal
 def clamp(value: float, valuemin: float, valuemax: float) -> float | int:
     """Clamp value between min and max."""
     return max(valuemin, min(value, valuemax))
+
+
+def device_name(name: str | None) -> str:
+    """Return the stove name, or the default one when Winet gives none."""
+    # Sans nom configuré, le module Winet renvoie "NO NAME"
+    if not name or name.strip().upper() in ("", "NO NAME"):
+        return DEFAULT_NAME
+    return name.strip()
 
 
 class CircularDeviceStatus(Enum):
@@ -111,7 +122,7 @@ class CircularApiData:
         """Init unset data."""
         self._rawdata = WinetGetRegisterResult()
         self.signal = self._rawdata.signal
-        self.name = self._rawdata.name
+        self.name = device_name(self._rawdata.name)
         self.alr = self._rawdata.alr
         self.host = host
         self.model = WinetProductModel(self._rawdata.model)
@@ -163,7 +174,7 @@ class CircularApiData:
             # Update public properties
             self.signal = newdata.signal
             self.alr = newdata.alr
-            self.name = newdata.name
+            self.name = device_name(newdata.name)
             self.model = WinetProductModel(newdata.model)
 
             # Decode specific categories
@@ -285,6 +296,11 @@ class CircularApiData:
         return self.status in [CircularDeviceStatus.ECO_STOP]
 
     @property
+    def is_shutting_down(self) -> bool:
+        """Is the stove in its final cleaning before stopping ?."""
+        return self.status == CircularDeviceStatus.FINAL_CLEANING
+
+    @property
     def error_offline(self) -> bool:
         """Is the stove in alarm state ?.
 
@@ -347,6 +363,9 @@ class CircularApiClient:
         self._eco_mode_cycles = 0
         self._update_lock = asyncio.Lock()  # Prevent concurrent update_data calls
         self._delta_ecomode = 0
+        # Bascule marche/arrêt en attente : statut au moment de l'envoi
+        self._status_change_from: CircularDeviceStatus | None = None
+        self._status_change_at = 0.0
 
     @property
     def data(self) -> CircularApiData:
@@ -424,19 +443,45 @@ class CircularApiClient:
                 self._reset_eco_mode()
                 await self.set_temperature(temp_value)
 
+    def _status_change_pending(self) -> bool:
+        """Is a previous on/off toggle still waiting for the stove status ?."""
+        if self._status_change_from is None:
+            return False
+        if self.data.status != self._status_change_from:
+            self._status_change_from = None
+            return False
+        if time.monotonic() - self._status_change_at > STATUS_CHANGE_TIMEOUT:
+            LOGGER.warning("Stove status unchanged after on/off request")
+            self._status_change_from = None
+            return False
+        return True
+
+    async def _toggle_status(self) -> None:
+        """Send the on/off toggle and remember it until the status changes."""
+        # CHANGE_STATUS est une bascule : un second envoi annulerait le premier
+        self._status_change_from = self.data.status
+        self._status_change_at = time.monotonic()
+        await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
+
     async def turn_on(self) -> None:
         """Turn on the stove."""
         if self.data.status != CircularDeviceStatus.OFF:
             return
+        if self._status_change_pending():
+            LOGGER.debug("Turn stove on ignored: previous request pending")
+            return
         LOGGER.debug("Turn stove on")
-        await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
+        await self._toggle_status()
 
     async def turn_off(self) -> None:
-        """Turn on the stove."""
-        if self.data.status == CircularDeviceStatus.OFF:
+        """Turn off the stove."""
+        if self.data.status == CircularDeviceStatus.OFF or self.data.is_shutting_down:
+            return
+        if self._status_change_pending():
+            LOGGER.debug("Turn stove off ignored: previous request pending")
             return
         LOGGER.debug("Turn stove off")
-        await self._winetclient.get_registers(WinetRegisterKey.CHANGE_STATUS)
+        await self._toggle_status()
 
     async def eco_mode_drive_on(self) -> None:
         """Turn on Eco Drive Mode."""

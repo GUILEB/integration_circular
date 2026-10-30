@@ -32,7 +32,10 @@ UPDATE_INTERVAL = 5
 UPDATE_TIMEOUT = 30
 # Nombre de cycles de mise à jour avant d'abandonner une demande de mode éco (5 min)
 ECO_DRIVE_MAX_CYCLES = 60
+# Délai pendant lequel une nouvelle bascule marche/arrêt est refusée (secondes)
+STATUS_CHANGE_TIMEOUT = 60
 # Defaults
+DEFAULT_NAME = "Circular 8"
 DEFAULT_THERMOSTAT_TEMP = 21
 DEFAULT_DELTA_ECOMODE_TEMP = 2
 
