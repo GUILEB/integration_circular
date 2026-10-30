@@ -12,6 +12,18 @@
                     "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
                     "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
                 }
+            },
+            "reconfigure": {
+                "title": "Reconfigure the stove",
+                "description": "Change the Winet module IP address or the external temperature sensor.",
+                "data": {
+                    "host": "Winet module IP address",
+                    "entity": "External temperature sensor (optional)"
+                },
+                "data_description": {
+                    "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
+                    "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
+                }
             }
         },
         "error": {
@@ -19,7 +31,9 @@
             "unknown": "Unexpected error, check the Home Assistant log."
         },
         "abort": {
-            "already_configured": "This stove is already configured."
+            "already_configured": "This stove is already configured.",
+            "reconfigure_successful": "Configuration updated.",
+            "wrong_device": "This address belongs to another stove."
         }
     }
 }

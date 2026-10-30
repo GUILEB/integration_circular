@@ -12,6 +12,18 @@
                     "host": "Adresse IP locale du module Winet du poêle, par exemple 192.168.1.23.",
                     "entity": "Capteur utilisé par le mode « Stop Déviation » pour corriger la consigne du poêle."
                 }
+            },
+            "reconfigure": {
+                "title": "Reconfigurer le poêle",
+                "description": "Modifiez l'adresse IP du module Winet ou le capteur de température externe.",
+                "data": {
+                    "host": "Adresse IP du module Winet",
+                    "entity": "Capteur de température externe (optionnel)"
+                },
+                "data_description": {
+                    "host": "Adresse IP locale du module Winet du poêle, par exemple 192.168.1.23.",
+                    "entity": "Capteur utilisé par le mode « Stop Déviation » pour corriger la consigne du poêle."
+                }
             }
         },
         "error": {
@@ -19,7 +31,9 @@
             "unknown": "Erreur inattendue, consultez le journal de Home Assistant."
         },
         "abort": {
-            "already_configured": "Ce poêle est déjà configuré."
+            "already_configured": "Ce poêle est déjà configuré.",
+            "reconfigure_successful": "Configuration mise à jour.",
+            "wrong_device": "Cette adresse correspond à un autre poêle."
         }
     }
 }
