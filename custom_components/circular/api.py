@@ -1,6 +1,7 @@
 """API Client."""
 
 import asyncio
+import math
 import time
 from enum import Enum
 
@@ -117,6 +118,15 @@ class CircularDeviceAlarm(Enum):
         return messages.get(self.name, "UNKNOWN")
 
 
+# Statuts où la consigne n'est pas alignée : poêle éteint, en arrêt ou inconnu
+STOP_DEVIATION_IGNORED_STATUSES = (
+    CircularDeviceStatus.OFF,
+    CircularDeviceStatus.FINAL_CLEANING,
+    CircularDeviceStatus.ALARM,
+    CircularDeviceStatus.UNKNOWN,
+)
+
+
 class CircularApiData:
     """Usable api data for the home assistant integration."""
 
@@ -135,8 +145,8 @@ class CircularApiData:
         self.power_set = 0
         self.fan_speed = 0
         self.delta_ecomode = 0.0
-        self.temperature_ask_by_external_entity = 0.0
-        self.auto_regulated_temperature = False
+        # Stop Déviation actif par défaut (l'état restauré prime au démarrage)
+        self.auto_regulated_temperature = True
 
     def _merge_params_efficiently(self, new_params: list[list[int]]) -> list[list[int]]:
         """Merge new parameters with existing ones efficiently."""
@@ -501,21 +511,25 @@ class CircularApiClient:
         self.data.auto_regulated_temperature = False
 
     async def set_temperature_ask_by_external_entity(self, value: float) -> None:
-        """Set temperature ask by external entity."""
-        # Le poêle n'accepte que des consignes entières : on compare des entiers
-        target = round(value)
+        """Align the stove target temperature on the external entity value."""
+        # Le poêle n'accepte que des consignes entières et bornées : on compare
+        # la valeur réellement écrite, arrondie au demi supérieur (20.5 -> 21)
+        target = int(
+            clamp(math.floor(value + 0.5), MIN_THERMOSTAT_TEMP, MAX_THERMOSTAT_TEMP)
+        )
         if (
-            self.data.auto_regulated_temperature
-            and self.data.is_heating
-            and target != self.data.temperature_set
-            and target != self.data.temperature_ask_by_external_entity
+            not self.data.auto_regulated_temperature
+            or self.data.status in STOP_DEVIATION_IGNORED_STATUSES
+            or self._eco_restore_temp is not None  # relance Eco en cours
+            or target == self.data.temperature_set
         ):
-            LOGGER.debug(
-                f"Regulated Temperature : winet Temp. {self.data.temperature_set} °C"
-                f" vs External Temp. {value} °C"
-            )
-            await self.set_temperature(target)
-            self.data.temperature_ask_by_external_entity = target
+            return
+        LOGGER.debug(
+            "Stop Déviation : consigne poêle %s °C alignée sur %s °C",
+            self.data.temperature_set,
+            value,
+        )
+        await self.set_temperature(target)
 
     def _hardware_update_due(self) -> bool:
         """Is it time to read the name, model and signal again ?."""

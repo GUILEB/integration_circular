@@ -9,7 +9,7 @@ case "$file" in
 esac
 
 cd "$(dirname "$0")/../.." || exit 0
-if ! output=$(scripts/test -q 2>&1); then
+if ! output=$(bash scripts/test -q 2>&1); then
   echo "Tests en échec après la modification de $file :" >&2
   echo "$output" | tail -40 >&2
   exit 2
