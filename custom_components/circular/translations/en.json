@@ -6,11 +6,11 @@
                 "description": "If you need help with the configuration have a look here: https://github.com/GUILEB/integration_circular",
                 "data": {
                     "host": "Winet module IP address",
-                    "entity": "External temperature sensor (optional)"
+                    "entity": "External target temperature (optional)"
                 },
                 "data_description": {
                     "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
-                    "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
+                    "entity": "Sensor providing the target temperature imposed on the stove in \"Stop Déviation\" mode, e.g. the Versatile Thermostat regulated temperature."
                 }
             },
             "reconfigure": {
@@ -18,11 +18,11 @@
                 "description": "Change the Winet module IP address or the external temperature sensor.",
                 "data": {
                     "host": "Winet module IP address",
-                    "entity": "External temperature sensor (optional)"
+                    "entity": "External target temperature (optional)"
                 },
                 "data_description": {
                     "host": "Local IP address of the stove's Winet module, for example 192.168.1.23.",
-                    "entity": "Sensor used by the \"Stop Déviation\" mode to correct the stove target temperature."
+                    "entity": "Sensor providing the target temperature imposed on the stove in \"Stop Déviation\" mode, e.g. the Versatile Thermostat regulated temperature."
                 }
             }
         },
