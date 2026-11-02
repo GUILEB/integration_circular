@@ -149,6 +149,8 @@ class CircularApiData:
         self.delta_ecomode = 0.0
         # Stop Déviation actif par défaut (l'état restauré prime au démarrage)
         self.auto_regulated_temperature = True
+        # OFF du thermostat en veille Eco plutôt qu'en extinction (par défaut)
+        self.eco_park_enabled = True
 
     def _merge_params_efficiently(self, new_params: list[list[int]]) -> list[list[int]]:
         """Merge new parameters with existing ones efficiently."""
@@ -540,6 +542,8 @@ class CircularApiClient:
 
     async def turn_on(self) -> None:
         """Turn on the stove."""
+        # Sans cela, le poêle rallumé repartirait aussitôt en Eco Stop
+        await self.resume_from_eco()
         if self.data.status != CircularDeviceStatus.OFF:
             return
         if self._status_change_pending():
@@ -568,6 +572,16 @@ class CircularApiClient:
         """Turn off automatic temperature regulation for the stove."""
         LOGGER.debug("Regulated Temperature - off")
         self.data.auto_regulated_temperature = False
+
+    async def eco_park_on(self) -> None:
+        """Stop heating through the Eco mode when the thermostat is turned off."""
+        LOGGER.debug("Eco park - on")
+        self.data.eco_park_enabled = True
+
+    async def eco_park_off(self) -> None:
+        """Really turn the stove off when the thermostat is turned off."""
+        LOGGER.debug("Eco park - off")
+        self.data.eco_park_enabled = False
 
     async def set_temperature_ask_by_external_entity(self, value: float) -> None:
         """Align the stove target temperature on the external entity value."""

@@ -132,7 +132,10 @@ class CircularClimate(CircularEntity, ClimateEntity):
         # Mise en veille Eco plutôt qu'une extinction : le poêle reste prêt à
         # repartir et VTherm peut le relancer
         if hvac_mode == HVACMode.OFF:
-            await self.coordinator.control_api.park_in_eco()
+            if self.coordinator.read_api.data.eco_park_enabled:
+                await self.coordinator.control_api.park_in_eco()
+            else:
+                await self.coordinator.control_api.turn_off()
             await self.coordinator.async_request_refresh()
             return
 

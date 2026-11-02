@@ -85,3 +85,12 @@ def test_off_then_heat_parks_and_restarts_from_eco(climate, client):
     asyncio.run(client.eco_mode_drive())
     assert writes(client) == [5, 20, 21, 20]
     client._winetclient.get_registers.assert_not_awaited()
+
+
+def test_off_really_turns_off_when_eco_park_disabled(climate, client):
+    client.data.status = S.WORK
+    client.data.temperature_set = 20
+    asyncio.run(client.eco_park_off())
+    asyncio.run(climate.async_set_hvac_mode(HVACMode.OFF))
+    assert writes(client) == []
+    client._winetclient.get_registers.assert_awaited_once()

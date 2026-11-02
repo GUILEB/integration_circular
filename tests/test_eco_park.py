@@ -84,3 +84,11 @@ def test_no_turn_off_once_eco_stop_reached(heating):
     with patch.object(api_mod.time, "monotonic", return_value=later):
         asyncio.run(heating.eco_park_drive())
     heating._winetclient.get_registers.assert_not_awaited()
+
+
+def test_turn_on_restores_setpoint_after_real_off(heating):
+    asyncio.run(heating.park_in_eco())
+    heating.data.status = S.OFF  # éteint ensuite par le switch Marche
+    asyncio.run(heating.turn_on())
+    assert writes(heating) == [5, 20]
+    heating._winetclient.get_registers.assert_awaited_once()
