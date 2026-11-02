@@ -580,6 +580,7 @@ class CircularApiClient:
             not self.data.auto_regulated_temperature
             or self.data.status in STOPPED_STATUSES
             or self._eco_restore_temp is not None  # relance Eco en cours
+            or self.is_eco_parked  # la consigne de veille doit tenir
             or target == self.data.temperature_set
         ):
             return

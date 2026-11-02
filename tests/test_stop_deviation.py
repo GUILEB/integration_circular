@@ -82,3 +82,14 @@ def test_out_of_range_written_once(regulated, value, bound):
     follow(regulated, value)
     follow(regulated, value)  # déjà à la borne : pas de réécriture en boucle
     assert writes(regulated) == [bound]
+
+
+@pytest.mark.parametrize("status", [S.WORK, S.ECO_STOP])
+def test_idle_while_eco_parked(regulated, status):
+    asyncio.run(regulated.park_in_eco())
+    regulated.data.status = status
+    follow(regulated, 21.0)
+    assert writes(regulated) == [5]
+    asyncio.run(regulated.resume_from_eco())
+    follow(regulated, 21.0)  # de nouveau actif une fois la veille levée
+    assert writes(regulated) == [5, 18, 21]
