@@ -122,14 +122,20 @@ class CircularClimate(CircularEntity, ClimateEntity):
         return HVAC_ACTIONS.get(self.coordinator.read_api.data.status, HVACAction.OFF)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Turn the stove on (heat) or off."""
+        """Resume heating, or stop it through the stove Eco mode."""
         LOGGER.debug("Setting hvac mode to [%s]", hvac_mode)
 
+        # Mise en veille Eco plutôt qu'une extinction : le poêle reste prêt à
+        # repartir et VTherm peut le relancer
         if hvac_mode == HVACMode.OFF:
-            await self.coordinator.control_api.turn_off()
+            await self.coordinator.control_api.park_in_eco()
+            await self.coordinator.async_request_refresh()
+            return
+
+        await self.coordinator.control_api.resume_from_eco()
 
         # ECO MODE : Demmarrage du poele s'il était arrêté en EcoMode
-        elif self.coordinator.read_api.data.is_ecomode_stop:
+        if self.coordinator.read_api.data.is_ecomode_stop:
             await self.coordinator.control_api.start_eco_mode_heating()
 
         else:

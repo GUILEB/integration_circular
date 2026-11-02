@@ -11,6 +11,8 @@ from .const import (
     DEFAULT_DELTA_ECOMODE_TEMP,
     DEFAULT_NAME,
     ECO_DRIVE_TIMEOUT,
+    ECO_PARK_TEMP,
+    ECO_PARK_TIMEOUT,
     HARDWARE_UPDATE_INTERVAL,
     LOGGER,
     MAX_DELTA_ECOMODE_TEMP,
@@ -118,8 +120,8 @@ class CircularDeviceAlarm(Enum):
         return messages.get(self.name, "UNKNOWN")
 
 
-# Statuts où la consigne n'est pas alignée : poêle éteint, en arrêt ou inconnu
-STOP_DEVIATION_IGNORED_STATUSES = (
+# Statuts où le poêle ne chauffe pas : éteint, en arrêt, en alarme ou inconnu
+STOPPED_STATUSES = (
     CircularDeviceStatus.OFF,
     CircularDeviceStatus.FINAL_CLEANING,
     CircularDeviceStatus.ALARM,
@@ -375,6 +377,9 @@ class CircularApiClient:
         # Relance depuis Eco Stop : consigne d'origine et consigne relevée
         self._eco_restore_temp: float | None = None
         self._eco_raised_temp: int | None = None
+        # Mise en veille Eco : consigne à rétablir et instant de la mise en veille
+        self._eco_parked_temp: float | None = None
+        self._eco_parked_at: float | None = None
         self._update_lock = asyncio.Lock()  # Prevent concurrent update_data calls
         self._delta_ecomode = DEFAULT_DELTA_ECOMODE_TEMP
         # Bascule marche/arrêt en attente : statut au moment de l'envoi
@@ -459,6 +464,60 @@ class CircularApiClient:
             LOGGER.warning("ECODRIVE - Délai dépassé, demande abandonnée")
             await self._end_eco_mode()
 
+    @property
+    def _park_setpoint_written(self) -> bool:
+        """Does the stove hold the Eco park setpoint ?."""
+        # Une consigne nulle n'a pas encore été lue
+        return (
+            self.data.status != CircularDeviceStatus.UNKNOWN
+            and 0 < self.data.temperature_set <= ECO_PARK_TEMP
+        )
+
+    @property
+    def is_eco_parked(self) -> bool:
+        """Is heating stopped through the stove Eco mode ?."""
+        return self._park_setpoint_written and self.data.status not in STOPPED_STATUSES
+
+    async def park_in_eco(self) -> None:
+        """Stop heating through the stove Eco mode instead of turning it off."""
+        if self.data.status in STOPPED_STATUSES or self.is_eco_parked:
+            return
+        await self._end_eco_mode()
+        LOGGER.info(
+            "Veille Eco : consigne %s °C abaissée à %s °C",
+            self.data.temperature_set,
+            ECO_PARK_TEMP,
+        )
+        self._eco_parked_temp = self.data.temperature_set
+        self._eco_parked_at = time.monotonic()
+        await self.set_temperature(ECO_PARK_TEMP)
+
+    async def resume_from_eco(self) -> None:
+        """Put back the setpoint saved when heating was parked in Eco mode."""
+        if not self._park_setpoint_written:
+            return
+        target = self._eco_parked_temp
+        if target is None:  # consigne perdue au redémarrage de HA
+            target = self.data.temperature_read + self._delta_ecomode
+        target = int(clamp(target, MIN_THERMOSTAT_TEMP, MAX_THERMOSTAT_TEMP))
+        LOGGER.info("Veille Eco : consigne %s °C rétablie", target)
+        self._eco_parked_temp = None
+        self._eco_parked_at = None
+        await self.set_temperature(target)
+        # Anticipe la relecture du poêle pour une relance Eco immédiate
+        self.data.temperature_set = target
+
+    async def eco_park_drive(self) -> None:
+        """Turn the stove off when it does not reach Eco Stop after parking."""
+        if self._eco_parked_at is None:
+            return
+        if not self.is_eco_parked or self.data.is_ecomode_stop:
+            self._eco_parked_at = None
+        elif time.monotonic() - self._eco_parked_at > ECO_PARK_TIMEOUT:
+            LOGGER.warning("Veille Eco : Eco Stop non atteint, arrêt du poêle")
+            self._eco_parked_at = None
+            await self.turn_off()
+
     def _status_change_pending(self) -> bool:
         """Is a previous on/off toggle still waiting for the stove status ?."""
         if self._status_change_from is None:
@@ -519,7 +578,7 @@ class CircularApiClient:
         )
         if (
             not self.data.auto_regulated_temperature
-            or self.data.status in STOP_DEVIATION_IGNORED_STATUSES
+            or self.data.status in STOPPED_STATUSES
             or self._eco_restore_temp is not None  # relance Eco en cours
             or target == self.data.temperature_set
         ):
@@ -613,6 +672,7 @@ class CircularApiClient:
 
             # EcoMode Drive handling
             await self.eco_mode_drive()
+            await self.eco_park_drive()
 
         finally:
             self._update_lock.release()

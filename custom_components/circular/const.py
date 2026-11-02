@@ -34,6 +34,8 @@ HARDWARE_UPDATE_INTERVAL = 300
 UPDATE_TIMEOUT = 30
 # Délai avant d'abandonner une relance depuis Eco Stop (secondes)
 ECO_DRIVE_TIMEOUT = 300
+# Délai pour atteindre Eco Stop après une mise en veille, sinon arrêt (secondes)
+ECO_PARK_TIMEOUT = 1200
 # Délai pendant lequel une nouvelle bascule marche/arrêt est refusée (secondes)
 STATUS_CHANGE_TIMEOUT = 60
 # Defaults
@@ -45,6 +47,9 @@ MAX_DELTA_ECOMODE_TEMP = 5
 
 MIN_THERMOSTAT_TEMP = 5
 MAX_THERMOSTAT_TEMP = 40
+# Consigne de mise en veille Eco : toujours sous la température lue, elle
+# provoque Eco Stop et sert de marqueur (elle survit à un redémarrage de HA)
+ECO_PARK_TEMP = MIN_THERMOSTAT_TEMP
 
 MIN_POWER = 1
 MAX_POWER = 5
