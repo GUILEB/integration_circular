@@ -74,7 +74,7 @@ La configuration se fait dans l'interface Home Assistant :
 
 ## Arrêt en mode Eco
 
-Quand le thermostat du poêle passe en `off` (depuis Home Assistant ou Versatile Thermostat), l'intégration ne l'éteint pas : elle abaisse sa consigne à 5 °C pour le mettre en **veille Eco**.
+Quand le thermostat du poêle passe en `off` (depuis Home Assistant ou Versatile Thermostat), l'intégration ne l'éteint pas : elle abaisse sa consigne à 10 °C pour le mettre en **veille Eco**.
 
 - Le poêle passe de lui-même en Eco Stop après quelques minutes. Le thermostat est affiché `off` dès la mise en veille.
 - Un passage en `heat` rétablit la consigne d'origine et relance le poêle depuis Eco Stop. Si Home Assistant a redémarré entre-temps, la consigne repart de la température lue plus le « Delta mode Eco ».

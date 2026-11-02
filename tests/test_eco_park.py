@@ -23,7 +23,7 @@ def heating(client):
 def test_park_lowers_setpoint_once(heating):
     asyncio.run(heating.park_in_eco())
     asyncio.run(heating.park_in_eco())  # déjà en veille
-    assert writes(heating) == [5]
+    assert writes(heating) == [10]
     assert heating.is_eco_parked
     heating._winetclient.get_registers.assert_not_awaited()
 
@@ -40,14 +40,14 @@ def test_resume_restores_saved_setpoint(heating):
     heating.data.status = S.ECO_STOP
     asyncio.run(heating.resume_from_eco())
     asyncio.run(heating.resume_from_eco())  # plus en veille
-    assert writes(heating) == [5, 20]
+    assert writes(heating) == [10, 20]
     assert not heating.is_eco_parked
 
 
 def test_resume_after_restart_uses_read_plus_delta(heating):
     # Consigne de veille lue sur le poêle, valeur d'origine perdue
     heating.data.status = S.ECO_STOP
-    heating.data.temperature_set = 5
+    heating.data.temperature_set = 10
     asyncio.run(heating.resume_from_eco())
     assert writes(heating) == [21]
 
@@ -58,10 +58,10 @@ def test_park_ends_pending_eco_restart_first(heating):
     asyncio.run(heating.start_eco_mode_heating())
     heating.data.status = S.WAIT_FOR_FLAME
     asyncio.run(heating.park_in_eco())
-    assert writes(heating) == [21, 19, 5]
+    assert writes(heating) == [21, 19, 10]
     heating.data.status = S.ECO_STOP
     asyncio.run(heating.resume_from_eco())
-    assert writes(heating) == [21, 19, 5, 19]
+    assert writes(heating) == [21, 19, 10, 19]
 
 
 def test_turns_off_when_eco_stop_not_reached(heating):
@@ -90,5 +90,5 @@ def test_turn_on_restores_setpoint_after_real_off(heating):
     asyncio.run(heating.park_in_eco())
     heating.data.status = S.OFF  # éteint ensuite par le switch Marche
     asyncio.run(heating.turn_on())
-    assert writes(heating) == [5, 20]
+    assert writes(heating) == [10, 20]
     heating._winetclient.get_registers.assert_awaited_once()

@@ -89,7 +89,7 @@ def test_idle_while_eco_parked(regulated, status):
     asyncio.run(regulated.park_in_eco())
     regulated.data.status = status
     follow(regulated, 21.0)
-    assert writes(regulated) == [5]
+    assert writes(regulated) == [10]
     asyncio.run(regulated.resume_from_eco())
     follow(regulated, 21.0)  # de nouveau actif une fois la veille levée
-    assert writes(regulated) == [5, 18, 21]
+    assert writes(regulated) == [10, 18, 21]

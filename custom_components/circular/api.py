@@ -469,10 +469,9 @@ class CircularApiClient:
     @property
     def _park_setpoint_written(self) -> bool:
         """Does the stove hold the Eco park setpoint ?."""
-        # Une consigne nulle n'a pas encore été lue
         return (
             self.data.status != CircularDeviceStatus.UNKNOWN
-            and 0 < self.data.temperature_set <= ECO_PARK_TEMP
+            and self.data.temperature_set == ECO_PARK_TEMP
         )
 
     @property

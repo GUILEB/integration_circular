@@ -42,10 +42,11 @@ def test_mode_and_action(climate, client, status, mode, action):
 )
 def test_eco_parked_reported_off(climate, client, status, action):
     client.data.status = status
-    client.data.temperature_set = 5
+    client.data.temperature_set = 10
     assert (climate.hvac_mode, climate.hvac_action) == (HVACMode.OFF, action)
-    client.data.temperature_set = 20
-    assert climate.hvac_mode == HVACMode.HEAT
+    for target in (9, 20):  # une consigne basse ordinaire n'est pas une veille
+        client.data.temperature_set = target
+        assert climate.hvac_mode == HVACMode.HEAT
 
 
 def test_set_hvac_mode_calls_stove(climate, client):
@@ -80,10 +81,10 @@ def test_off_then_heat_parks_and_restarts_from_eco(climate, client):
     client.data.status = S.ECO_STOP
     asyncio.run(climate.async_set_hvac_mode(HVACMode.HEAT))
     # Consigne rétablie puis relevée pour relancer, restaurée une fois en chauffe
-    assert writes(client) == [5, 20, 21]
+    assert writes(client) == [10, 20, 21]
     client.data.status = S.WORK
     asyncio.run(client.eco_mode_drive())
-    assert writes(client) == [5, 20, 21, 20]
+    assert writes(client) == [10, 20, 21, 20]
     client._winetclient.get_registers.assert_not_awaited()
 
 

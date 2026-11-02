@@ -47,9 +47,10 @@ MAX_DELTA_ECOMODE_TEMP = 5
 
 MIN_THERMOSTAT_TEMP = 5
 MAX_THERMOSTAT_TEMP = 40
-# Consigne de mise en veille Eco : toujours sous la température lue, elle
-# provoque Eco Stop et sert de marqueur (elle survit à un redémarrage de HA)
-ECO_PARK_TEMP = MIN_THERMOSTAT_TEMP
+# Consigne de mise en veille Eco : sous la température de la pièce, elle
+# provoque Eco Stop (et protège du gel en dessous). Elle sert de marqueur et
+# survit à un redémarrage de HA
+ECO_PARK_TEMP = 10
 
 MIN_POWER = 1
 MAX_POWER = 5
