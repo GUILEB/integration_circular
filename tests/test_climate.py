@@ -36,6 +36,18 @@ def test_mode_and_action(climate, client, status, mode, action):
     assert (climate.hvac_mode, climate.hvac_action) == (mode, action)
 
 
+@pytest.mark.parametrize(
+    ("status", "action"),
+    [(S.WORK, HVACAction.HEATING), (S.ECO_STOP, HVACAction.IDLE)],
+)
+def test_eco_parked_reported_off(climate, client, status, action):
+    client.data.status = status
+    client.data.temperature_set = 5
+    assert (climate.hvac_mode, climate.hvac_action) == (HVACMode.OFF, action)
+    client.data.temperature_set = 20
+    assert climate.hvac_mode == HVACMode.HEAT
+
+
 def test_set_hvac_mode_calls_stove(climate, client):
     client.turn_on = AsyncMock()
     client.park_in_eco = AsyncMock()

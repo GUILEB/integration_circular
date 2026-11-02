@@ -112,7 +112,11 @@ class CircularClimate(CircularEntity, ClimateEntity):
     @property
     def hvac_mode(self) -> str:
         """Return current hvac mode."""
-        if self.coordinator.read_api.data.status in HVAC_OFF_STATUSES:
+        # En veille Eco, VTherm doit voir le poêle arrêté et non le rééteindre
+        if (
+            self.coordinator.read_api.data.status in HVAC_OFF_STATUSES
+            or self.coordinator.read_api.is_eco_parked
+        ):
             return HVACMode.OFF
         return HVACMode.HEAT
 
