@@ -1,13 +1,16 @@
 """Thermostat entity."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.components.climate.const import HVACAction, HVACMode
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from custom_components.circular.api import CircularDeviceStatus as S
 from custom_components.circular.climate import CircularClimate
+
+from .conftest import writes
 
 
 @pytest.fixture
@@ -34,9 +37,40 @@ def test_mode_and_action(climate, client, status, mode, action):
     assert (climate.hvac_mode, climate.hvac_action) == (mode, action)
 
 
+@pytest.mark.parametrize(
+    ("status", "action"),
+    [(S.WORK, HVACAction.HEATING), (S.ECO_STOP, HVACAction.IDLE)],
+)
+def test_eco_parked_reported_off(climate, client, status, action):
+    client.data.status = status
+    client.data.temperature_set = 18
+    client.restore_eco_park(20, 18)
+    assert (climate.hvac_mode, climate.hvac_action) == (HVACMode.OFF, action)
+    assert climate.extra_state_attributes == {
+        "eco_park_restore_temperature": 20,
+        "eco_park_temperature": 18,
+    }
+    client.data.temperature_set = 20  # consigne changée ailleurs : veille levée
+    assert climate.hvac_mode == HVACMode.HEAT
+    assert climate.extra_state_attributes is None
+
+
+def test_park_restored_from_last_state(climate, client):
+    last = MagicMock(
+        attributes={"eco_park_restore_temperature": 20, "eco_park_temperature": 18}
+    )
+    climate.async_get_last_state = AsyncMock(return_value=last)
+    with patch.object(CoordinatorEntity, "async_added_to_hass", AsyncMock()):
+        asyncio.run(climate.async_added_to_hass())
+    client.data.status = S.ECO_STOP
+    client.data.temperature_set = 18
+    assert climate.hvac_mode == HVACMode.OFF
+
+
 def test_set_hvac_mode_calls_stove(climate, client):
     client.turn_on = AsyncMock()
-    client.turn_off = AsyncMock()
+    client.park_in_eco = AsyncMock()
+    client.resume_from_eco = AsyncMock()
     client.start_eco_mode_heating = AsyncMock()
     client.data.status = S.OFF
     asyncio.run(climate.async_set_hvac_mode(HVACMode.HEAT))
@@ -45,7 +79,8 @@ def test_set_hvac_mode_calls_stove(climate, client):
     asyncio.run(climate.async_set_hvac_mode(HVACMode.HEAT))
     client.start_eco_mode_heating.assert_awaited_once()
     asyncio.run(climate.async_set_hvac_mode(HVACMode.OFF))
-    client.turn_off.assert_awaited_once()
+    client.park_in_eco.assert_awaited_once()
+    assert client.resume_from_eco.await_count == 2
     assert climate.coordinator.async_request_refresh.await_count == 3
 
 
@@ -54,3 +89,27 @@ def test_power_preset(climate, client):
     assert climate.preset_mode == "3"
     asyncio.run(climate.async_set_preset_mode("5"))
     assert client._winetclient.set_register.await_args.args[1] == 5
+
+
+def test_off_then_heat_parks_and_restarts_from_eco(climate, client):
+    client.data.status = S.WORK
+    client.data.temperature_read = 19
+    client.data.temperature_set = 20
+    asyncio.run(climate.async_set_hvac_mode(HVACMode.OFF))
+    client.data.status = S.ECO_STOP
+    asyncio.run(climate.async_set_hvac_mode(HVACMode.HEAT))
+    # Consigne rétablie puis relevée pour relancer, restaurée une fois en chauffe
+    assert writes(client) == [18, 20, 21]
+    client.data.status = S.WORK
+    asyncio.run(client.eco_mode_drive())
+    assert writes(client) == [18, 20, 21, 20]
+    client._winetclient.get_registers.assert_not_awaited()
+
+
+def test_off_really_turns_off_when_eco_park_disabled(climate, client):
+    client.data.status = S.WORK
+    client.data.temperature_set = 20
+    asyncio.run(client.eco_park_off())
+    asyncio.run(climate.async_set_hvac_mode(HVACMode.OFF))
+    assert writes(client) == []
+    client._winetclient.get_registers.assert_awaited_once()

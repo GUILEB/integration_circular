@@ -107,6 +107,9 @@
             },
             "stop_deviation": {
                 "name": "Stop Déviation Mode"
+            },
+            "eco_park": {
+                "name": "Eco Park Mode"
             }
         },
         "number": {

@@ -28,6 +28,7 @@ async def async_get_config_entry_diagnostics(
             "power_set": data.power_set,
             "fan_speed": data.fan_speed,
             "auto_regulated_temperature": data.auto_regulated_temperature,
+            "eco_park_enabled": data.eco_park_enabled,
         },
         # Registres bruts [id, valeur] reçus du module Winet
         "registers": data._rawdata.params,  # noqa: SLF001

@@ -30,6 +30,9 @@ class CircularSwitchEntityDescription(
 ):
     """Describes a switch entity."""
 
+    # Réapplique au démarrage le dernier état connu (réglage propre à HA)
+    restore_state: bool = False
+
 
 CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
     CircularSwitchEntityDescription(
@@ -47,6 +50,16 @@ CIRCULAR_SWITCHES: tuple[CircularSwitchEntityDescription, ...] = (
         on_fn=lambda control_api: control_api.auto_regulated_temperature_on(),
         off_fn=lambda control_api: control_api.auto_regulated_temperature_off(),
         value_fn=lambda data: data.auto_regulated_temperature,
+        restore_state=True,
+    ),
+    CircularSwitchEntityDescription(
+        key="eco_park",
+        translation_key="eco_park",
+        name="Eco Park Mode",
+        on_fn=lambda control_api: control_api.eco_park_on(),
+        off_fn=lambda control_api: control_api.eco_park_off(),
+        value_fn=lambda data: data.eco_park_enabled,
+        restore_state=True,
     ),
 )
 
@@ -73,10 +86,7 @@ class CircularSwitch(CircularEntity, RestoreEntity, SwitchEntity):
     async def async_added_to_hass(self) -> None:
         """Restore initial state on startup."""
         # Restore the last known state from Home Assistant BEFORE calling super()
-        if (
-            self.entity_description.key
-            == "Auto_regulated_temperature_by_external_on_off"
-        ):
+        if self.entity_description.restore_state:
             last_state = await self.async_get_last_state()
             LOGGER.debug(
                 "Restoring state for %s: last_state=%s",

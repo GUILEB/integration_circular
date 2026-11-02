@@ -19,6 +19,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .api import CircularDeviceStatus
 from .const import (
@@ -55,6 +56,10 @@ HVAC_ACTIONS = {
     CircularDeviceStatus.ECO_STOP: HVACAction.IDLE,
 }
 
+# Attributs mémorisant la veille Eco d'un redémarrage de HA à l'autre
+ATTR_ECO_PARK_RESTORE_TEMP = "eco_park_restore_temperature"
+ATTR_ECO_PARK_TEMP = "eco_park_temperature"
+
 # Niveaux de puissance exposés en preset ("1" à "5")
 POWER_PRESETS = [str(power) for power in range(MIN_POWER, MAX_POWER + 1)]
 
@@ -75,7 +80,7 @@ async def async_setup_entry(
     )
 
 
-class CircularClimate(CircularEntity, ClimateEntity):
+class CircularClimate(CircularEntity, RestoreEntity, ClimateEntity):
     """Circular climate entity."""
 
     entity_description: ClimateEntityDescription
@@ -109,10 +114,36 @@ class CircularClimate(CircularEntity, ClimateEntity):
         FAN_AUTO: 6,
     }
 
+    async def async_added_to_hass(self) -> None:
+        """Restore an Eco park set before Home Assistant restarted."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is None:
+            return
+        restore_temp = last_state.attributes.get(ATTR_ECO_PARK_RESTORE_TEMP)
+        park_temp = last_state.attributes.get(ATTR_ECO_PARK_TEMP)
+        if restore_temp is not None and park_temp is not None:
+            self.coordinator.control_api.restore_eco_park(restore_temp, park_temp)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose the Eco park setpoints so that they survive a restart."""
+        setpoints = self.coordinator.read_api.eco_park_setpoints
+        if setpoints is None:
+            return None
+        return {
+            ATTR_ECO_PARK_RESTORE_TEMP: setpoints[0],
+            ATTR_ECO_PARK_TEMP: setpoints[1],
+        }
+
     @property
     def hvac_mode(self) -> str:
         """Return current hvac mode."""
-        if self.coordinator.read_api.data.status in HVAC_OFF_STATUSES:
+        # En veille Eco, VTherm doit voir le poêle arrêté et non le rééteindre
+        if (
+            self.coordinator.read_api.data.status in HVAC_OFF_STATUSES
+            or self.coordinator.read_api.is_eco_parked
+        ):
             return HVACMode.OFF
         return HVACMode.HEAT
 
@@ -122,14 +153,23 @@ class CircularClimate(CircularEntity, ClimateEntity):
         return HVAC_ACTIONS.get(self.coordinator.read_api.data.status, HVACAction.OFF)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Turn the stove on (heat) or off."""
+        """Resume heating, or stop it through the stove Eco mode."""
         LOGGER.debug("Setting hvac mode to [%s]", hvac_mode)
 
+        # Mise en veille Eco plutôt qu'une extinction : le poêle reste prêt à
+        # repartir et VTherm peut le relancer
         if hvac_mode == HVACMode.OFF:
-            await self.coordinator.control_api.turn_off()
+            if self.coordinator.read_api.data.eco_park_enabled:
+                await self.coordinator.control_api.park_in_eco()
+            else:
+                await self.coordinator.control_api.turn_off()
+            await self.coordinator.async_request_refresh()
+            return
+
+        await self.coordinator.control_api.resume_from_eco()
 
         # ECO MODE : Demmarrage du poele s'il était arrêté en EcoMode
-        elif self.coordinator.read_api.data.is_ecomode_stop:
+        if self.coordinator.read_api.data.is_ecomode_stop:
             await self.coordinator.control_api.start_eco_mode_heating()
 
         else:

@@ -23,6 +23,15 @@ scripts/develop                                # run HA with ./config (alternati
 - Version bumps: update both `VERSION` in `const.py` and `version` in `manifest.json`.
 - Work on `develop`; `master` is the release branch.
 
+## Home Assistant MCP (real data)
+
+`.mcp.json` declares two Home Assistant MCP servers (HA's built-in `mcp_server` integration, endpoint `/api/mcp`):
+
+- `home-assistant` — the user's production HA at `http://192.168.1.157:8123`, with the real stove. Token: env var `HA_PROD_TOKEN`.
+- `home-assistant-dev` — the local dev instance (`./config`, `localhost:8123`). Token: env var `HA_TOKEN`.
+
+When the user asks for real/live information (actual stove state, entity values, history, how their installation behaves), query the `home-assistant` MCP tools instead of guessing from the code or tests. Use it read-only unless the user explicitly asks to act on a device. If the server is unavailable, say so rather than inventing values.
+
 ## Architecture
 
 Layers, from the stove up:

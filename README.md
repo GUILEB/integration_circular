@@ -72,6 +72,18 @@ La configuration se fait dans l'interface Home Assistant :
 3. Renseigner l'adresse IP du module Winet du poêle.
 4. Optionnel : choisir un capteur de température. Sa valeur est alors envoyée au poêle en régulation par sonde externe.
 
+## Arrêt en mode Eco
+
+Quand le thermostat du poêle passe en `off` (depuis Home Assistant ou Versatile Thermostat), l'intégration ne l'éteint pas : elle abaisse sa consigne du « Delta mode Eco » pour le mettre en **veille Eco**.
+
+- Le poêle passe de lui-même en Eco Stop après quelques minutes, ou une fois la pièce à la consigne abaissée. Le thermostat est affiché `off` dès la mise en veille. Si la pièce se refroidit nettement, le poêle repart seul.
+- Un passage en `heat` rétablit la consigne d'origine et relance le poêle depuis Eco Stop. La veille survit à un redémarrage de Home Assistant ; une consigne changée ailleurs (télécommande, appli) la lève.
+- Le mode Stop Déviation est suspendu pendant la veille.
+- Le mode Eco doit être activé sur le poêle. Si Eco Stop n'est pas atteint en 20 minutes alors que la pièce dépasse la consigne abaissée, le poêle est réellement éteint.
+- La veille Eco n'économise pas d'allumage : Eco Stop éteint la flamme et la relance est un allumage complet. L'intérêt est que le poêle reste prêt à repartir.
+
+Pour un arrêt réel (été, entretien), désactiver le switch « Arrêt en mode Eco » ou utiliser le switch « Marche ».
+
 ## Registres utilisés
 
 L'intégration communique avec le module Winet par HTTP local. Les registres connus sont décrits dans `custom_components/circular/winet/const.py`.

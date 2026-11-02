@@ -9,7 +9,7 @@ from homeassistant.const import (
 # Base component constants
 NAME = "Circular Integration"
 DOMAIN = "circular"
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 ISSUE_URL = "https://github.com/GUILEB/integration_circular/issues"
 
 LOGGER = logging.getLogger(__package__)
@@ -34,6 +34,8 @@ HARDWARE_UPDATE_INTERVAL = 300
 UPDATE_TIMEOUT = 30
 # Délai avant d'abandonner une relance depuis Eco Stop (secondes)
 ECO_DRIVE_TIMEOUT = 300
+# Délai pour atteindre Eco Stop après une mise en veille, sinon arrêt (secondes)
+ECO_PARK_TIMEOUT = 1200
 # Délai pendant lequel une nouvelle bascule marche/arrêt est refusée (secondes)
 STATUS_CHANGE_TIMEOUT = 60
 # Defaults
