@@ -19,6 +19,7 @@ from homeassistant.components.climate.const import (
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .api import CircularDeviceStatus
 from .const import (
@@ -55,6 +56,10 @@ HVAC_ACTIONS = {
     CircularDeviceStatus.ECO_STOP: HVACAction.IDLE,
 }
 
+# Attributs mémorisant la veille Eco d'un redémarrage de HA à l'autre
+ATTR_ECO_PARK_RESTORE_TEMP = "eco_park_restore_temperature"
+ATTR_ECO_PARK_TEMP = "eco_park_temperature"
+
 # Niveaux de puissance exposés en preset ("1" à "5")
 POWER_PRESETS = [str(power) for power in range(MIN_POWER, MAX_POWER + 1)]
 
@@ -75,7 +80,7 @@ async def async_setup_entry(
     )
 
 
-class CircularClimate(CircularEntity, ClimateEntity):
+class CircularClimate(CircularEntity, RestoreEntity, ClimateEntity):
     """Circular climate entity."""
 
     entity_description: ClimateEntityDescription
@@ -108,6 +113,28 @@ class CircularClimate(CircularEntity, ClimateEntity):
         FAN_HIGH: 5,
         FAN_AUTO: 6,
     }
+
+    async def async_added_to_hass(self) -> None:
+        """Restore an Eco park set before Home Assistant restarted."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is None:
+            return
+        restore_temp = last_state.attributes.get(ATTR_ECO_PARK_RESTORE_TEMP)
+        park_temp = last_state.attributes.get(ATTR_ECO_PARK_TEMP)
+        if restore_temp is not None and park_temp is not None:
+            self.coordinator.control_api.restore_eco_park(restore_temp, park_temp)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        """Expose the Eco park setpoints so that they survive a restart."""
+        setpoints = self.coordinator.read_api.eco_park_setpoints
+        if setpoints is None:
+            return None
+        return {
+            ATTR_ECO_PARK_RESTORE_TEMP: setpoints[0],
+            ATTR_ECO_PARK_TEMP: setpoints[1],
+        }
 
     @property
     def hvac_mode(self) -> str:

@@ -11,7 +11,6 @@ from .const import (
     DEFAULT_DELTA_ECOMODE_TEMP,
     DEFAULT_NAME,
     ECO_DRIVE_TIMEOUT,
-    ECO_PARK_TEMP,
     ECO_PARK_TIMEOUT,
     HARDWARE_UPDATE_INTERVAL,
     LOGGER,
@@ -379,8 +378,9 @@ class CircularApiClient:
         # Relance depuis Eco Stop : consigne d'origine et consigne relevée
         self._eco_restore_temp: float | None = None
         self._eco_raised_temp: int | None = None
-        # Mise en veille Eco : consigne à rétablir et instant de la mise en veille
+        # Mise en veille Eco : consigne à rétablir, consigne de veille, instant
         self._eco_parked_temp: float | None = None
+        self._eco_park_target: int | None = None
         self._eco_parked_at: float | None = None
         self._update_lock = asyncio.Lock()  # Prevent concurrent update_data calls
         self._delta_ecomode = DEFAULT_DELTA_ECOMODE_TEMP
@@ -467,42 +467,66 @@ class CircularApiClient:
             await self._end_eco_mode()
 
     @property
-    def _park_setpoint_written(self) -> bool:
-        """Does the stove hold the Eco park setpoint ?."""
-        return (
-            self.data.status != CircularDeviceStatus.UNKNOWN
-            and self.data.temperature_set == ECO_PARK_TEMP
-        )
+    def eco_park_setpoints(self) -> tuple[float, int] | None:
+        """Setpoint to restore and park setpoint, while the stove holds the latter."""
+        # Une consigne changée ailleurs (télécommande, appli) lève la veille
+        if (
+            self._eco_parked_temp is None
+            or self._eco_park_target is None
+            or self.data.temperature_set != self._eco_park_target
+        ):
+            return None
+        return self._eco_parked_temp, self._eco_park_target
+
+    def restore_eco_park(self, restore_temp: float, park_temp: int) -> None:
+        """Remember an Eco park set before Home Assistant restarted."""
+        self._eco_parked_temp = restore_temp
+        self._eco_park_target = int(park_temp)
+        self._eco_parked_at = time.monotonic()
 
     @property
     def is_eco_parked(self) -> bool:
         """Is heating stopped through the stove Eco mode ?."""
-        return self._park_setpoint_written and self.data.status not in STOPPED_STATUSES
+        return (
+            self.eco_park_setpoints is not None
+            and self.data.status not in STOPPED_STATUSES
+        )
 
     async def park_in_eco(self) -> None:
         """Stop heating through the stove Eco mode instead of turning it off."""
         if self.data.status in STOPPED_STATUSES or self.is_eco_parked:
             return
         await self._end_eco_mode()
+        # Consigne abaissée du delta Eco : le poêle passe en Eco Stop et ne
+        # repart seul que si la pièce se refroidit nettement
+        target = int(
+            clamp(
+                self.data.temperature_set - self._delta_ecomode,
+                MIN_THERMOSTAT_TEMP,
+                MAX_THERMOSTAT_TEMP,
+            )
+        )
         LOGGER.info(
             "Veille Eco : consigne %s °C abaissée à %s °C",
             self.data.temperature_set,
-            ECO_PARK_TEMP,
+            target,
         )
         self._eco_parked_temp = self.data.temperature_set
+        self._eco_park_target = target
         self._eco_parked_at = time.monotonic()
-        await self.set_temperature(ECO_PARK_TEMP)
+        await self.set_temperature(target)
+        # Anticipe la relecture du poêle : la veille est effective tout de suite
+        self.data.temperature_set = target
 
     async def resume_from_eco(self) -> None:
         """Put back the setpoint saved when heating was parked in Eco mode."""
-        if not self._park_setpoint_written:
+        setpoints = self.eco_park_setpoints
+        if setpoints is None:
             return
-        target = self._eco_parked_temp
-        if target is None:  # consigne perdue au redémarrage de HA
-            target = self.data.temperature_read + self._delta_ecomode
-        target = int(clamp(target, MIN_THERMOSTAT_TEMP, MAX_THERMOSTAT_TEMP))
+        target = int(setpoints[0])
         LOGGER.info("Veille Eco : consigne %s °C rétablie", target)
         self._eco_parked_temp = None
+        self._eco_park_target = None
         self._eco_parked_at = None
         await self.set_temperature(target)
         # Anticipe la relecture du poêle pour une relance Eco immédiate
@@ -514,6 +538,9 @@ class CircularApiClient:
             return
         if not self.is_eco_parked or self.data.is_ecomode_stop:
             self._eco_parked_at = None
+        elif self.data.temperature_read <= self._eco_park_target:
+            # Pièce sous la consigne de veille : le poêle chauffe à juste titre
+            self._eco_parked_at = time.monotonic()
         elif time.monotonic() - self._eco_parked_at > ECO_PARK_TIMEOUT:
             LOGGER.warning("Veille Eco : Eco Stop non atteint, arrêt du poêle")
             self._eco_parked_at = None

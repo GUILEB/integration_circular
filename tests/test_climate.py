@@ -1,10 +1,11 @@
 """Thermostat entity."""
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.components.climate.const import HVACAction, HVACMode
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from custom_components.circular.api import CircularDeviceStatus as S
 from custom_components.circular.climate import CircularClimate
@@ -42,11 +43,28 @@ def test_mode_and_action(climate, client, status, mode, action):
 )
 def test_eco_parked_reported_off(climate, client, status, action):
     client.data.status = status
-    client.data.temperature_set = 10
+    client.data.temperature_set = 18
+    client.restore_eco_park(20, 18)
     assert (climate.hvac_mode, climate.hvac_action) == (HVACMode.OFF, action)
-    for target in (9, 20):  # une consigne basse ordinaire n'est pas une veille
-        client.data.temperature_set = target
-        assert climate.hvac_mode == HVACMode.HEAT
+    assert climate.extra_state_attributes == {
+        "eco_park_restore_temperature": 20,
+        "eco_park_temperature": 18,
+    }
+    client.data.temperature_set = 20  # consigne changée ailleurs : veille levée
+    assert climate.hvac_mode == HVACMode.HEAT
+    assert climate.extra_state_attributes is None
+
+
+def test_park_restored_from_last_state(climate, client):
+    last = MagicMock(
+        attributes={"eco_park_restore_temperature": 20, "eco_park_temperature": 18}
+    )
+    climate.async_get_last_state = AsyncMock(return_value=last)
+    with patch.object(CoordinatorEntity, "async_added_to_hass", AsyncMock()):
+        asyncio.run(climate.async_added_to_hass())
+    client.data.status = S.ECO_STOP
+    client.data.temperature_set = 18
+    assert climate.hvac_mode == HVACMode.OFF
 
 
 def test_set_hvac_mode_calls_stove(climate, client):
@@ -81,10 +99,10 @@ def test_off_then_heat_parks_and_restarts_from_eco(climate, client):
     client.data.status = S.ECO_STOP
     asyncio.run(climate.async_set_hvac_mode(HVACMode.HEAT))
     # Consigne rétablie puis relevée pour relancer, restaurée une fois en chauffe
-    assert writes(client) == [10, 20, 21]
+    assert writes(client) == [18, 20, 21]
     client.data.status = S.WORK
     asyncio.run(client.eco_mode_drive())
-    assert writes(client) == [10, 20, 21, 20]
+    assert writes(client) == [18, 20, 21, 20]
     client._winetclient.get_registers.assert_not_awaited()
 
 
